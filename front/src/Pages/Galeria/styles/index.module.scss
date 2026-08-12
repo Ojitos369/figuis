@@ -150,6 +150,11 @@
     color: var(--text-muted);
 }
 
+.figReactions {
+    height: 20px;
+    overflow: hidden;
+}
+
 /* ---------- States ---------- */
 .loaderWrap {
     display: flex;

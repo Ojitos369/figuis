@@ -36,12 +36,23 @@ class GetFiguras(NoSession, BaseApi):
                 FROM figura_etiquetas fe
                 JOIN etiquetas e ON e.id = fe.etiqueta_id
                 WHERE fe.figura_id = f.id
-            ) as etiquetas
+            ) as etiquetas,
+            (
+                SELECT json_agg(json_build_object('emoji', r.emoji, 'cantidad', r.cantidad))
+                FROM (
+                    SELECT emoji, COUNT(*) as cantidad
+                    FROM figura_reacciones
+                    WHERE figura_id = f.id
+                    GROUP BY emoji
+                    ORDER BY cantidad DESC
+                    LIMIT 5
+                ) r
+            ) as reacciones_top
         FROM figuras f
         {self.joins}
         WHERE f.estatus = 'publico' {self.filtros}
         GROUP BY f.id
-        ORDER BY f.orden ASC, f.created_at DESC
+        ORDER BY f.nombre ASC
         LIMIT :limit OFFSET :offset
         """
         query_data = {**self.query_data, "limit": limit, "offset": offset}
@@ -109,7 +120,69 @@ class GetFigura(NoSession, BaseApi):
         )
         figura["etiquetas"] = self.d2d(etiquetas)
 
+        reacciones = self.conexion.consulta_asociativa(
+            """
+            SELECT emoji, COUNT(*) as cantidad
+            FROM figura_reacciones
+            WHERE figura_id = :id
+            GROUP BY emoji
+            ORDER BY cantidad DESC
+            """,
+            {"id": id}
+        )
+        figura["reacciones"] = self.d2d(reacciones)
+
+        visitor_id = self.data.get("visitor_id", None)
+        mis_reacciones = []
+        if visitor_id:
+            mias = self.conexion.consulta_asociativa(
+                "SELECT emoji FROM figura_reacciones WHERE figura_id = :id AND visitor_id = :visitor_id",
+                {"id": id, "visitor_id": visitor_id}
+            )
+            mis_reacciones = [r["emoji"] for r in self.d2d(mias)]
+        figura["mis_reacciones"] = mis_reacciones
+
         self.response = {"data": figura}
+
+
+class ToggleReaccion(NoSession, BaseApi):
+    def main(self):
+        self.show_me()
+        figura_id = self.data.get("figura_id")
+        visitor_id = (self.data.get("visitor_id") or "").strip()[:64]
+        emoji = (self.data.get("emoji") or "").strip()[:16]
+        if not figura_id or not visitor_id or not emoji:
+            raise self.MYE("Faltan datos")
+
+        existente = self.conexion.consulta_asociativa(
+            "SELECT id FROM figura_reacciones WHERE figura_id = :figura_id AND visitor_id = :visitor_id AND emoji = :emoji",
+            {"figura_id": figura_id, "visitor_id": visitor_id, "emoji": emoji}
+        )
+        if not existente.empty:
+            self.conexion.ejecutar(
+                "DELETE FROM figura_reacciones WHERE id = :id",
+                {"id": existente.iloc[0]["id"]}
+            )
+            added = False
+        else:
+            self.conexion.ejecutar(
+                "INSERT INTO figura_reacciones (id, figura_id, visitor_id, emoji) VALUES (:id, :figura_id, :visitor_id, :emoji)",
+                {"id": self.get_id(), "figura_id": figura_id, "visitor_id": visitor_id, "emoji": emoji}
+            )
+            added = True
+        self.conexion.commit()
+
+        reacciones = self.conexion.consulta_asociativa(
+            """
+            SELECT emoji, COUNT(*) as cantidad
+            FROM figura_reacciones
+            WHERE figura_id = :figura_id
+            GROUP BY emoji
+            ORDER BY cantidad DESC
+            """,
+            {"figura_id": figura_id}
+        )
+        self.response = {"added": added, "reacciones": self.d2d(reacciones)}
 
 
 class GetEtiquetas(NoSession, BaseApi):

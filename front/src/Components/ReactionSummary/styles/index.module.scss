@@ -1,0 +1,26 @@
+.summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 7px;
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    font-size: 0.7rem;
+    line-height: 1.5;
+}
+
+.emoji {
+    font-size: 0.78rem;
+}
+
+.count {
+    color: var(--text-muted);
+    font-weight: var(--fw-medium);
+}

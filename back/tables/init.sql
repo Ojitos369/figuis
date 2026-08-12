@@ -85,6 +85,18 @@ CREATE TABLE IF NOT EXISTS figura_archivos (
 );
 CREATE INDEX IF NOT EXISTS idx_figura_archivos_figura ON figura_archivos(figura_id);
 
+-- reacciones tipo whatsapp de visitantes anonimos (visitor_id = uuid generado
+-- y guardado en localStorage del navegador, no requiere cuenta)
+CREATE TABLE IF NOT EXISTS figura_reacciones (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    figura_id uuid REFERENCES figuras(id) ON DELETE CASCADE,
+    visitor_id VARCHAR(64) NOT NULL,
+    emoji VARCHAR(16) NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE (figura_id, visitor_id, emoji)
+);
+CREATE INDEX IF NOT EXISTS idx_figura_reacciones_figura ON figura_reacciones(figura_id);
+
 
 -- Seed de cuentas de prueba (idempotente). Borrar antes de pasar a prod.
 INSERT INTO usuarios (id, nombre, usuario, password)

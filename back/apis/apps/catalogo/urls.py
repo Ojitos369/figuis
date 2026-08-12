@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request
-from .api import GetFiguras, GetFigura, GetEtiquetas
+from .api import GetFiguras, GetFigura, GetEtiquetas, ToggleReaccion
 
 router = APIRouter()
 
@@ -19,4 +19,10 @@ async def get_figura(request: Request):
 @router.get("/etiquetas")
 async def get_etiquetas(request: Request):
     r = await GetEtiquetas(request=request).run()
+    return r
+
+
+@router.post("/toggle_reaccion")
+async def toggle_reaccion(request: Request):
+    r = await ToggleReaccion(request=request).run()
     return r

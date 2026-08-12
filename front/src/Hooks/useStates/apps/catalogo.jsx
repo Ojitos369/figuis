@@ -1,3 +1,5 @@
+import { getVisitorId } from '../../../Core/visitor';
+
 export const catalogo = props => {
     const { miAxios, s, u1, u2, notificacion } = props;
 
@@ -20,7 +22,7 @@ export const catalogo = props => {
     const getFigura = (id, onDone) => {
         u2("loadings", "catalogo", "figura", true);
         u1("catalogo", "figuraActual", null);
-        miAxios.get("catalogo/figura", { params: { id } })
+        miAxios.get("catalogo/figura", { params: { id, visitor_id: getVisitorId() } })
             .then(res => {
                 u1("catalogo", "figuraActual", res.data.data);
                 if (onDone) onDone(res.data.data);
@@ -42,5 +44,13 @@ export const catalogo = props => {
             .catch(() => {});
     };
 
-    return { getFiguras, getFigura, getEtiquetas };
+    const toggleReaccion = (figuraId, emoji, onDone) => {
+        miAxios.post("catalogo/toggle_reaccion", { figura_id: figuraId, emoji, visitor_id: getVisitorId() })
+            .then(res => { if (onDone) onDone(res.data); })
+            .catch(() => {
+                if (notificacion) notificacion({ message: "No se pudo guardar la reacción", title: "Error", mode: "danger" });
+            });
+    };
+
+    return { getFiguras, getFigura, getEtiquetas, toggleReaccion };
 };

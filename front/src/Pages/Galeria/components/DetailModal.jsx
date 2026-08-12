@@ -5,6 +5,7 @@ import { Tag } from '../../../Components/Tag';
 import { Loader } from '../../../Components/Loader';
 import { MediaThumb } from '../../../Components/MediaThumb';
 import { MediaViewer } from '../../../Components/MediaViewer';
+import { ReactionBar } from '../../../Components/ReactionBar';
 
 export const DetailModal = ({ ls }) => {
     const { f } = useStates();
@@ -74,6 +75,8 @@ export const DetailModal = ({ ls }) => {
                     {!!data.descripcion && (
                         <p className={style.detailDesc}>{data.descripcion}</p>
                     )}
+
+                    <ReactionBar figuraId={data.id} reacciones={data.reacciones} misReacciones={data.mis_reacciones} />
 
                     <button type="button" className={style.shareBtn} onClick={share}>
                         🔗 Compartir

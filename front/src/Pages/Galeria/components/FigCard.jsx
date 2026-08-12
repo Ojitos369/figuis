@@ -1,5 +1,6 @@
 import { Tag } from '../../../Components/Tag';
 import { MediaThumb } from '../../../Components/MediaThumb';
+import { ReactionSummary } from '../../../Components/ReactionSummary';
 
 export const FigCard = ({ figura, style, onOpen }) => {
     return (
@@ -18,6 +19,9 @@ export const FigCard = ({ figura, style, onOpen }) => {
                     {figura.etiquetas?.length > 2 && (
                         <span className={style.figTagsMore}>+{figura.etiquetas.length - 2}</span>
                     )}
+                </div>
+                <div className={style.figReactions}>
+                    <ReactionSummary reacciones={figura.reacciones_top} />
                 </div>
             </div>
         </button>

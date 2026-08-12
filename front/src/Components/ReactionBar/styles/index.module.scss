@@ -1,0 +1,39 @@
+.bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 10px;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    cursor: pointer;
+    transition: background var(--t-fast), border-color var(--t-fast), transform 0.1s ease;
+
+    &:hover { background: var(--surface-3); }
+    &:active { transform: scale(0.95); }
+    &:disabled { opacity: 0.6; cursor: default; }
+
+    &.active {
+        background: var(--accent-soft);
+        border-color: var(--accent);
+    }
+}
+
+.emoji {
+    font-size: 1.05rem;
+    line-height: 1;
+}
+
+.count {
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    color: var(--text-soft);
+
+    .active & { color: var(--accent-hover); }
+}
