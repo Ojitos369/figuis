@@ -1,0 +1,156 @@
+@use '../../../static/css/response.scss' as *;
+
+.indexPage {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-6);
+    width: 100%;
+}
+
+.hero {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+
+    .badge {
+        align-self: flex-start;
+        padding: 4px var(--sp-3);
+        border-radius: var(--r-pill);
+        background: var(--accent-soft);
+        color: var(--accent-hover);
+        font-size: var(--fs-xs);
+        font-weight: var(--fw-semibold);
+        letter-spacing: 0.02em;
+    }
+    .title {
+        margin: 0;
+        font-size: var(--fs-2xl);
+        font-weight: var(--fw-bold);
+        letter-spacing: -0.03em;
+        color: var(--text);
+    }
+    .subtitle {
+        margin: 0;
+        max-width: 56ch;
+        color: var(--text-muted);
+        font-size: var(--fs-md);
+    }
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--sp-4);
+
+    @include sm { grid-template-columns: repeat(2, 1fr); }
+    @include lg { grid-template-columns: repeat(3, 1fr); }
+}
+
+.card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    padding: var(--sp-5);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--surface-1);
+    box-shadow: var(--shadow-sm);
+    transition: border-color var(--t-base), transform var(--t-base), box-shadow var(--t-base);
+
+    &:hover {
+        border-color: var(--border-strong);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .cardLabel {
+        font-size: var(--fs-xs);
+        font-weight: var(--fw-semibold);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+    }
+    .cardValue {
+        font-size: var(--fs-xl);
+        font-weight: var(--fw-bold);
+        color: var(--text);
+        word-break: break-word;
+    }
+    .cardHint {
+        margin: 0;
+        font-size: var(--fs-sm);
+        color: var(--text-muted);
+    }
+}
+
+.sectionTitle {
+    margin: 0;
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-semibold);
+    color: var(--text);
+}
+
+.settings {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+
+    .settingsCard {
+        display: flex;
+        flex-direction: column;
+        padding: var(--sp-2) var(--sp-3);
+        border: 1px solid var(--border);
+        border-radius: var(--r-lg);
+        background: var(--surface-1);
+        box-shadow: var(--shadow-sm);
+
+        > * + * {
+            border-top: 1px solid var(--border);
+        }
+    }
+}
+
+.actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+
+    .actionsRow {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--sp-3);
+    }
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px var(--sp-5);
+    border: 1px solid transparent;
+    border-radius: var(--r-md);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    cursor: pointer;
+    transition: all var(--t-fast);
+
+    &:hover { transform: translateY(-1px); }
+    &:active { transform: translateY(0); }
+
+    &.btnPrimary {
+        background: var(--accent);
+        color: var(--accent-contrast);
+        &:hover { background: var(--accent-strong); }
+    }
+    &.btnSuccess {
+        background: var(--success);
+        color: #fff;
+        &:hover { filter: brightness(1.05); }
+    }
+    &.btnGhost {
+        background: transparent;
+        border-color: var(--border-strong);
+        color: var(--text);
+        &:hover { background: var(--surface-2); }
+    }
+}

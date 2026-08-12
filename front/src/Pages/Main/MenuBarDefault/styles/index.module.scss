@@ -1,0 +1,94 @@
+@use '../../../../static/css/response.scss' as *;
+
+.menuBarDefault {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    width: 100%;
+
+    .sectionLabel {
+        padding: var(--sp-2) var(--sp-2) 0;
+        font-size: var(--fs-xs);
+        font-weight: var(--fw-semibold);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+    }
+
+    .row {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-3);
+        width: 100%;
+        padding: var(--sp-3);
+        border: 1px solid var(--border);
+        border-radius: var(--r-md);
+        background: var(--surface-2);
+        color: var(--text);
+        cursor: pointer;
+        transition: border-color var(--t-fast), background var(--t-fast);
+
+        &:hover {
+            border-color: var(--border-strong);
+            background: var(--surface-3);
+        }
+
+        .rowIcon {
+            display: flex;
+            width: 22px;
+            height: 22px;
+            flex-shrink: 0;
+            color: var(--accent-hover);
+            svg { width: 100%; height: 100%; }
+        }
+
+        .rowText {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            flex: 1;
+            min-width: 0;
+
+            .rowTitle {
+                font-size: var(--fs-sm);
+                font-weight: var(--fw-semibold);
+            }
+            .rowSub {
+                font-size: var(--fs-xs);
+                color: var(--text-muted);
+            }
+        }
+
+        .switch {
+            position: relative;
+            width: 40px;
+            height: 22px;
+            flex-shrink: 0;
+            border-radius: var(--r-pill);
+            background: var(--surface-1);
+            border: 1px solid var(--border-strong);
+            transition: background var(--t-base);
+
+            .knob {
+                position: absolute;
+                top: 50%;
+                left: 3px;
+                width: 16px;
+                height: 16px;
+                transform: translateY(-50%);
+                border-radius: 50%;
+                background: var(--text-muted);
+                transition: left var(--t-base), background var(--t-base);
+            }
+
+            &.switchOn {
+                background: var(--accent);
+                border-color: var(--accent);
+                .knob {
+                    left: 21px;
+                    background: #fff;
+                }
+            }
+        }
+    }
+}

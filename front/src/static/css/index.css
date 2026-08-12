@@ -1,0 +1,14 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import './aa-generales.css';
+@import './general-div.css';
+@import './colors.css';
+@import './transition-view.css';
+
+* {
+    box-sizing: border-box;
+}
+
+#root {
+    min-height: 100vh;
+    font-family: var(--font-body);
+}

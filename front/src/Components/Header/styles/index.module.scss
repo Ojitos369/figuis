@@ -1,0 +1,141 @@
+    @use '../../../static/css/response.scss' as *;
+
+.headerContent {
+    height: var(--header-h);
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: 0 var(--sp-4);
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+
+    @include md {
+        padding: 0 var(--sp-5);
+    }
+
+    &.devModeBC {
+        // indicador discreto de dev (sin romper la paleta)
+        border-bottom-color: var(--accent);
+        box-shadow: inset 0 -2px 0 var(--accent);
+    }
+
+    .pageTitle {
+        flex: 1;
+        margin: 0;
+        text-align: center;
+        font-size: var(--fs-lg);
+        font-weight: var(--fw-semibold);
+        letter-spacing: -0.01em;
+        color: var(--text);
+        text-transform: capitalize;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .menuIndexPart {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: var(--sp-3);
+        height: 100%;
+
+        .sidebarIcon {
+            height: 30px;
+            width: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: var(--sp-2);
+
+            .brandDot {
+                width: 14px;
+                height: 14px;
+                border-radius: 5px;
+                background: linear-gradient(135deg, var(--accent-hover), var(--accent-strong));
+                box-shadow: var(--accent-glow);
+            }
+            .brandName {
+                font-weight: var(--fw-bold);
+                font-size: var(--fs-lg);
+                letter-spacing: -0.02em;
+                color: var(--text);
+            }
+        }
+    }
+
+    .userPart {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: var(--sp-2);
+        height: 100%;
+
+        svg {
+            color: var(--text-soft);
+            cursor: pointer;
+            transition: color var(--t-fast);
+            &:hover { color: var(--accent-hover); }
+        }
+    }
+
+    .menuUserContainer {
+        padding: 0 var(--sp-3);
+        display: flex;
+        flex-wrap: wrap;
+        width: 100%;
+
+        .userTitle {
+            width: 100%;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: var(--sp-1);
+            font-weight: var(--fw-bold);
+            font-size: var(--fs-lg);
+            text-align: center;
+        }
+
+        .userPart {
+            width: auto;
+            height: 100%;
+            display: flex;
+            flex-direction: row;
+            justify-content: start;
+            align-items: center;
+            // padding: 0 15px;
+        }
+
+        .menuUserContainer {
+            padding: 0 10px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+
+            .menuAction {
+                margin-top: var(--sp-5);
+                width: 90%;
+                padding: var(--sp-3);
+                border-radius: var(--r-md);
+                transition: all var(--t-base);
+                @include md { width: 30%; }
+                &:hover { font-weight: var(--fw-semibold); }
+                &.chageTheme {
+                    border: 1px solid var(--accent);
+                    &:hover { background: var(--accent); color: var(--accent-contrast); }
+                }
+                &.closeSession {
+                    border: 1px solid var(--danger);
+                    &:hover { background: var(--danger); color: #fff; }
+                }
+            }
+        }
+    }
+}

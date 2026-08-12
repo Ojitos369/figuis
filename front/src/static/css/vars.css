@@ -1,0 +1,139 @@
+:root {
+    /* ===================================================================
+       DESIGN TOKENS — sistema minimalista moderno
+       Tamaños, colores y espaciados centralizados como variables.
+       =================================================================== */
+
+    /* ----- Acento de marca (independiente del tema) ----- */
+    --accent: #6366f1;
+    --accent-hover: #818cf8;
+    --accent-strong: #4f46e5;
+    --accent-soft: rgba(99, 102, 241, 0.14);
+    --accent-soft-2: rgba(99, 102, 241, 0.26);
+    --accent-glow: 0 0 0 3px rgba(99, 102, 241, 0.22);
+    --accent-contrast: #ffffff;
+
+    /* ----- Estados ----- */
+    --success: #22c55e;
+    --success-soft: rgba(34, 197, 94, 0.16);
+    --danger: #ef4444;
+    --danger-soft: rgba(239, 68, 68, 0.16);
+    --warning: #f59e0b;
+    --warning-soft: rgba(245, 158, 11, 0.16);
+    --info: #38bdf8;
+
+    /* ----- Radios ----- */
+    --r-xs: 6px;
+    --r-sm: 8px;
+    --r-md: 12px;
+    --r-lg: 16px;
+    --r-xl: 22px;
+    --r-pill: 999px;
+
+    /* ----- Escala de espaciado ----- */
+    --sp-1: 4px;
+    --sp-2: 8px;
+    --sp-3: 12px;
+    --sp-4: 16px;
+    --sp-5: 24px;
+    --sp-6: 32px;
+    --sp-7: 48px;
+
+    /* ----- Tipografía ----- */
+    --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --font-display: 'Inter', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', Menlo, monospace;
+
+    --fs-xs: 0.78rem;
+    --fs-sm: 0.875rem;
+    --fs-md: 1rem;
+    --fs-lg: 1.25rem;
+    --fs-xl: 1.6rem;
+    --fs-2xl: 2.2rem;
+
+    --fw-normal: 400;
+    --fw-medium: 500;
+    --fw-semibold: 600;
+    --fw-bold: 700;
+
+    /* ----- Transiciones ----- */
+    --t-fast: 0.15s ease;
+    --t-base: 0.25s ease;
+    --t-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* ----- Layout ----- */
+    --side-bar-w: min(280px, 80vw);
+    --menu-bar-w: min(280px, 80vw);
+    --header-h: 60px;
+    --content-max: 1180px;
+
+    /* ----- Sombras (override por tema más abajo) ----- */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.18);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.25);
+    --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.35);
+
+    /* ===================================================================
+       Aliases legacy (los usan aa-generales.css y Core/helper.js)
+       =================================================================== */
+    --my-bg-dark: #000;
+    --my-success: var(--success);
+    --my-primary: var(--accent);
+    --my-orange: #fd7e14;
+    --my-danger: var(--danger);
+    --my-yellow: var(--warning);
+    --my-purple: #800080;
+    --my-secondary: #6c757d;
+    --my-dark: #212529;
+    --my-light: #f8f9fa;
+    --my-black: #0d0d12;
+    --my-white: #f7f7fb;
+}
+
+/* ===================================================================
+   TEMA OSCURO  (clase aplicada en <App> => .bg-my-black)
+   Las variables semánticas cascadean a todos los hijos.
+   =================================================================== */
+.bg-my-black {
+    --surface-0: #0d0d12;
+    --surface-1: #14141b;
+    --surface-2: #1c1c26;
+    --surface-3: #242431;
+    --elev: rgba(20, 20, 28, 0.82);
+    --elev-strong: rgba(28, 28, 38, 0.94);
+
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.16);
+
+    --text: #ececf3;
+    --text-soft: #b6b6c6;
+    --text-muted: #7c7c90;
+    --text-dim: #50505f;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.62);
+}
+
+/* ===================================================================
+   TEMA CLARO  (.bg-my-white)
+   =================================================================== */
+.bg-my-white {
+    --surface-0: #f6f6fb;
+    --surface-1: #ffffff;
+    --surface-2: #f0f0f6;
+    --surface-3: #e6e6ef;
+    --elev: rgba(255, 255, 255, 0.86);
+    --elev-strong: rgba(255, 255, 255, 0.96);
+
+    --border: rgba(16, 16, 32, 0.09);
+    --border-strong: rgba(16, 16, 32, 0.18);
+
+    --text: #1a1a22;
+    --text-soft: #45454f;
+    --text-muted: #6c6c7a;
+    --text-dim: #a2a2b2;
+
+    --shadow-sm: 0 1px 2px rgba(20, 20, 40, 0.08);
+    --shadow-md: 0 8px 24px rgba(20, 20, 40, 0.10);
+    --shadow-lg: 0 18px 48px rgba(20, 20, 40, 0.16);
+}

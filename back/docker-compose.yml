@@ -1,0 +1,18 @@
+services:
+    figuis-web:
+        build: .
+        command: ["/usr/bin/supervisord"]
+        container_name: figuis-py
+        restart: unless-stopped
+        env_file:
+            - .env
+        volumes:
+            - .:/usr/src/app
+        ports:
+            - "8369:8000"
+        networks:
+            - figuis-net
+
+networks:
+    figuis-net:
+        driver: bridge
