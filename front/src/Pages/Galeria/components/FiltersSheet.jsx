@@ -13,11 +13,21 @@ const ORDEN_OPTS = [
 export const FiltersSheet = ({ ls }) => {
     const {
         style, q, setQ, etiquetas, selectedTags, toggleTag,
-        orden, setOrden, filtersOpen, setFiltersOpen, activeFiltersCount, clearFilters,
+        orden, setOrden, filtersOpen, closeFilters, applyFilters, activeFiltersCount, clearFilters,
     } = ls;
 
     return (
-        <SheetModal open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Buscar y filtrar" maxWidth="480px">
+        <SheetModal
+            open={filtersOpen}
+            onClose={closeFilters}
+            title="Buscar y filtrar"
+            maxWidth="480px"
+            footer={
+                <button type="button" className={style.applyFiltersBtn} onClick={applyFilters}>
+                    Aplicar {!!activeFiltersCount && `(${activeFiltersCount})`}
+                </button>
+            }
+        >
             <div className={style.filtersBody}>
                 <div className={style.searchWrap}>
                     <span className={style.searchIcon}>🔍</span>

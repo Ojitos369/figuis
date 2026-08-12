@@ -122,6 +122,22 @@
     gap: var(--sp-2);
 }
 
+.applyFiltersBtn {
+    width: 100%;
+    padding: var(--sp-3) var(--sp-4);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    border: none;
+    border-radius: var(--r-md);
+    background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+    color: var(--accent-contrast);
+    cursor: pointer;
+    transition: filter var(--t-fast), transform 0.1s ease;
+
+    &:hover { filter: brightness(1.08); }
+    &:active { transform: scale(0.99); }
+}
+
 .clearFiltersBtn {
     align-self: flex-start;
     padding: 0.55rem 1rem;

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useStates, createState } from '../../Hooks/useStates';
 import style from './styles/index.module.scss';
 
@@ -7,6 +7,8 @@ export const localStates = () => {
     const { s, f } = useStates();
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
+    const [searchParams] = useSearchParams();
 
     const figuras = useMemo(() => s.catalogo?.figuras || [], [s.catalogo?.figuras]);
     const pagination = useMemo(() => s.catalogo?.pagination || null, [s.catalogo?.pagination]);
@@ -20,7 +22,26 @@ export const localStates = () => {
     const [selectedTags, setSelectedTags] = createState(['galeria', 'selectedTags'], []);
     const [page, setPage] = createState(['galeria', 'page'], 1);
     const [orden, setOrdenRaw] = createState(['galeria', 'orden'], 'nombre_asc');
-    const [filtersOpen, setFiltersOpen] = createState(['galeria', 'filtersOpen'], false);
+
+    // El sheet de filtros se abre/cierra con el router (?filtros=1), no con un
+    // booleano suelto: asi el boton "atras" del navegador tambien lo cierra.
+    const filtersOpen = searchParams.get('filtros') === '1';
+    const openFilters = useCallback(() => {
+        navigate(`${location.pathname}?filtros=1`);
+    }, [navigate, location.pathname]);
+    const closeFilters = useCallback(() => {
+        navigate(-1);
+    }, [navigate]);
+    const applyFilters = useCallback(() => {
+        f.catalogo.getFiguras({
+            q: q || undefined,
+            etiquetas: selectedTags.length ? selectedTags.join(',') : undefined,
+            orden: orden || undefined,
+            page: 1,
+            limit: 24,
+        });
+        navigate('/');
+    }, [navigate, f.catalogo, q, selectedTags, orden]);
 
     const toggleTag = useCallback((tagId) => {
         const next = selectedTags.includes(tagId)
@@ -64,7 +85,7 @@ export const localStates = () => {
         style, id, figuras, pagination, loading, etiquetas,
         figuraActual, loadingDetail,
         q, setQ: setQAndResetPage, selectedTags, toggleTag, page, setPage,
-        orden, setOrden, filtersOpen, setFiltersOpen, activeFiltersCount, clearFilters,
+        orden, setOrden, filtersOpen, openFilters, closeFilters, applyFilters, activeFiltersCount, clearFilters,
         openDetail, closeDetail,
     };
 };

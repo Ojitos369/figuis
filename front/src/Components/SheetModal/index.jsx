@@ -18,6 +18,10 @@ export const SheetModal = ({ open, onClose, title, children, footer, maxWidth = 
 
     return (
         <div className={style.overlay} onClick={onClose}>
+            {/* Fijo al viewport: siempre en el mismo lugar, no se mueve con el scroll
+                del contenido ni con el teclado del celular. */}
+            <button type="button" className={style.overlayCloseBtn} onClick={onClose} aria-label="Cerrar">✕</button>
+
             <div
                 className={style.sheet}
                 style={{ '--sheet-max-w': maxWidth }}

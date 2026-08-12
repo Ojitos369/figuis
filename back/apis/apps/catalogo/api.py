@@ -32,7 +32,7 @@ class GetFiguras(NoSession, BaseApi):
         except Exception: page = 1
         offset = (page - 1) * limit
 
-        orden_sql = self.ORDEN_MAP.get(self.data.get("orden"), self.ORDEN_MAP["nombre_asc"])
+        orden_sql = self.ORDEN_MAP.get(self.data.get("orden"), self.ORDEN_MAP["fecha_desc"])
 
         query = f"""
         SELECT f.id, f.nombre, f.descripcion, f.created_at,
