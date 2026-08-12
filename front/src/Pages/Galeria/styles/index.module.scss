@@ -80,6 +80,7 @@
 .figCard {
     display: flex;
     flex-direction: column;
+    height: 100%;
     padding: 0;
     border: 1px solid var(--border);
     border-radius: var(--r-lg);
@@ -120,6 +121,7 @@
 .figBody {
     display: flex;
     flex-direction: column;
+    flex: 1;
     gap: 6px;
     padding: var(--sp-3);
 }
@@ -128,6 +130,7 @@
     font-size: var(--fs-sm);
     font-weight: var(--fw-semibold);
     color: var(--text);
+    line-height: 1.3;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -138,6 +141,8 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 4px;
+    height: 20px;
+    overflow: hidden;
 }
 
 .figTagsMore {
