@@ -1,0 +1,123 @@
+.adminEtiquetas {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-5);
+    padding: var(--sp-4) 0 var(--sp-7);
+    max-width: 520px;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+    border-radius: var(--r-lg);
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+}
+
+.nameInput {
+    width: 100%;
+    padding: 0.6rem 0.875rem;
+    font-size: var(--fs-sm);
+    border-radius: var(--r-md);
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    &:focus { outline: none; border-color: var(--accent); box-shadow: var(--accent-glow); }
+}
+
+.presets {
+    display: flex;
+    gap: var(--sp-2);
+}
+
+.presetDot {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid var(--surface-1);
+    cursor: pointer;
+}
+
+.formActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--sp-2);
+    margin-top: var(--sp-1);
+}
+
+.cancelBtn {
+    padding: 0.55rem 1rem;
+    font-size: var(--fs-sm);
+    border-radius: var(--r-md);
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-soft);
+    cursor: pointer;
+    &:hover { background: var(--surface-2); }
+}
+
+.saveBtn {
+    padding: 0.55rem 1.1rem;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    border: none;
+    border-radius: var(--r-md);
+    background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+    color: var(--accent-contrast);
+    cursor: pointer;
+    &:hover { filter: brightness(1.08); }
+    &:disabled { opacity: 0.55; cursor: default; }
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-2) var(--sp-3);
+    border-radius: var(--r-md);
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+}
+
+.count {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    flex: 1;
+}
+
+.rowActions {
+    display: flex;
+    gap: var(--sp-2);
+
+    button {
+        padding: 4px 10px;
+        font-size: var(--fs-xs);
+        font-weight: var(--fw-medium);
+        border: none;
+        border-radius: var(--r-sm);
+        background: var(--surface-2);
+        color: var(--text-soft);
+        cursor: pointer;
+        &:hover { background: var(--surface-3); }
+    }
+
+    .delete {
+        color: var(--danger);
+        &:hover { background: var(--danger-soft); }
+    }
+}
+
+.emptyState {
+    padding: var(--sp-5) 0;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--fs-sm);
+}

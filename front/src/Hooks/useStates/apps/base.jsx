@@ -3,19 +3,21 @@ import { f as ff } from "../fs";
 import axios from "axios";
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
+import { API_URL } from "../../../constants/api";
 
 const MySwal = withReactContent(Swal);
-const link = 'http://localhost:8369/api/';
 axios.defaults.withCredentials = true;
 const miAxios = axios.create({
-    baseURL: link,
+    baseURL: API_URL,
 });
 
-const pjid = "reapi";
+const pjid = "figuis";
 
 import { app as appMod } from "./app";
 import { general as generalMod } from "./general";
 import { auth as authMod } from "./auth";
+import { catalogo as catalogoMod } from "./catalogo";
+import { admin as adminMod } from "./admin";
 
 const updates = () => {
     const ls = useSelector(state => state.fs.ls);
@@ -54,7 +56,13 @@ const updates = () => {
     const u9 = (f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, value) => {
         d(ff.u9({ f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, value }));
     }
-    return { urs, u0, u1, u2, u3, u4, u5, u6, u7, u8, u9 }
+    const addToast = (toast) => {
+        d(ff.addToast({ toast }));
+    }
+    const removeToast = (id) => {
+        d(ff.removeToast({ id }));
+    }
+    return { urs, u0, u1, u2, u3, u4, u5, u6, u7, u8, u9, addToast, removeToast }
 }
 
 
@@ -67,10 +75,12 @@ export const useBase = props => {
     const general = generalMod({ ...bases, ...updatesVars });
     const app = appMod({ ...bases, ...updatesVars });
     const auth = authMod({ ...bases, ...updatesVars, notificacion: general.notificacion });
+    const catalogo = catalogoMod({ ...bases, ...updatesVars, notificacion: general.notificacion });
+    const admin = adminMod({ ...bases, ...updatesVars, notificacion: general.notificacion });
 
     return {
         MySwal, miAxios,
         u0, u1, u2, u3, u4, u5, u6, u7, u8, u9,
-        app, general, auth, 
+        app, general, auth, catalogo, admin,
     };
 }

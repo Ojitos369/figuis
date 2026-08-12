@@ -9,7 +9,7 @@ export const SideBarDefault = props => {
         <div className={`${style.sideBarDefault}`}>
             <Link to="/" viewTransition className={`${style.brand}`} onClick={closeIfMobile}>
                 <span className={`${style.brandDot}`} />
-                <span className={`${style.brandName}`}>reapi</span>
+                <span className={`${style.brandName}`}>figuis</span>
             </Link>
 
             <span className={`${style.sectionLabel}`}>Navegación</span>

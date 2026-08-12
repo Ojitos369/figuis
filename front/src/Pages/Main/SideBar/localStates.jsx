@@ -3,6 +3,7 @@ import { useStates, createState } from "../../../Hooks/useStates";
 import style from './styles/index.module.scss';
 
 import { SideBarDefault } from "../SideBarDefault";
+import { SideBarAdmin } from "../../Admin/SideBarAdmin";
 
 export const localStates = () => {
     const { s } = useStates();
@@ -11,8 +12,7 @@ export const localStates = () => {
 
     const Component = useMemo(() => {
         switch (sideMode) {
-            // Aquí se agregan sidebars específicos por página:
-            // case 'algunaPagina': return SideBarAlgunaPagina;
+            case 'admin': return SideBarAdmin;
             default:
                 return SideBarDefault;
         }

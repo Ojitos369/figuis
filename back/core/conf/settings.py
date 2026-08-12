@@ -27,7 +27,7 @@ db_data = {
     "user": os.environ.get('DB_USER'),
     "password": os.environ.get('DB_PASSWORD'),
     "name": os.environ.get('DB_NAME'),
-    "port": os.environ.get('DB_PORT', '5432'),
+    "port": os.environ.get('DB_PORT', '5442'),
 }
 
 SESSION_HOURS = 12
@@ -48,4 +48,4 @@ email_settings = {
 class MYE(Exception):
     pass
 
-ce = CE(name_project = 'REAPI', email_settings = email_settings)
+ce = CE(name_project = 'figuis', email_settings = email_settings)

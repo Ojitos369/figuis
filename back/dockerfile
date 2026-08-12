@@ -1,4 +1,4 @@
-FROM python:3.13
+FROM python:3.14
 
 # ENVS
 ENV DEBIAN_FRONTEND=noninteractive
@@ -46,7 +46,7 @@ COPY . $APPINSTALL
 RUN pip install -r requirements.txt
 WORKDIR $APPINSTALL
 
-# docker start reapi-py
-# docker rm -f reapi-py && docker image rm reapi-web && docker network rm reapi-net && docker compose up -d
-# docker rm -f reapi-py && docker image rm reapi-web && docker compose up -d
+# docker start figuis-py
+# docker rm -f figuis-py && docker image rm figuis-web && docker network rm figuis-netp && docker compose up -d
+# docker rm -f figuis-py && docker image rm figuis-web && docker compose up -d
 

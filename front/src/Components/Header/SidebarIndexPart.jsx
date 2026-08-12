@@ -11,7 +11,7 @@ export const SidebarIndexPart = () => {
             </div>
             <Link to="/" className={`${style.brand}`}>
                 <span className={`${style.brandDot}`} />
-                <span className={`${style.brandName}`}>reapi</span>
+                <span className={`${style.brandName}`}>figuis</span>
             </Link>
         </div>
     );

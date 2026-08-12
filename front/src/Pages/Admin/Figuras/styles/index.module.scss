@@ -1,0 +1,190 @@
+.adminFiguras {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-5);
+    padding: var(--sp-4) 0 var(--sp-7);
+}
+
+.pageHeader {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+
+    @media (min-width: 640px) {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+}
+
+.searchRow {
+    display: flex;
+    gap: var(--sp-2);
+    flex: 1;
+}
+
+.searchInput {
+    flex: 1;
+    min-width: 0;
+    padding: 0.6rem 0.9rem;
+    font-size: var(--fs-sm);
+    border-radius: var(--r-md);
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    color: var(--text);
+    &::placeholder { color: var(--text-muted); }
+    &:focus { outline: none; border-color: var(--accent); box-shadow: var(--accent-glow); }
+}
+
+.statusSelect {
+    padding: 0.6rem 0.75rem;
+    font-size: var(--fs-sm);
+    border-radius: var(--r-md);
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    color: var(--text);
+}
+
+.newBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0.65rem 1.1rem;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    border: none;
+    border-radius: var(--r-md);
+    background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+    color: var(--accent-contrast);
+    cursor: pointer;
+    white-space: nowrap;
+
+    span { font-size: 1.1rem; line-height: 1; }
+    &:hover { filter: brightness(1.08); }
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--sp-3);
+
+    @media (min-width: 640px) { grid-template-columns: repeat(3, 1fr); }
+    @media (min-width: 960px) { grid-template-columns: repeat(4, 1fr); }
+}
+
+.figuraCard {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border-radius: var(--r-lg);
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform var(--t-fast), box-shadow var(--t-fast), border-color var(--t-fast);
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+        border-color: var(--border-strong);
+    }
+}
+
+.thumb {
+    position: relative;
+    aspect-ratio: 1;
+    background: var(--surface-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    img { width: 100%; height: 100%; object-fit: cover; display: block; }
+}
+
+.thumbEmpty {
+    font-size: 2rem;
+    opacity: 0.5;
+}
+
+.badge {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    padding: 2px 8px;
+    border-radius: var(--r-pill);
+    font-size: 0.65rem;
+    font-weight: var(--fw-semibold);
+}
+.badgePublic { background: var(--success-soft); color: var(--success); }
+.badgeDraft { background: var(--warning-soft); color: var(--warning); }
+
+.body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: var(--sp-3);
+}
+
+.name {
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.meta {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+}
+
+.tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 2px;
+}
+
+.deleteBtn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-size: 0.75rem;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity var(--t-fast), background var(--t-fast);
+
+    .figuraCard:hover & { opacity: 1; }
+    &:hover { background: var(--danger); }
+
+    @media (hover: none) { opacity: 1; }
+}
+
+.loaderWrap {
+    display: flex;
+    justify-content: center;
+    padding: var(--sp-7) 0;
+}
+
+.emptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-7) 0;
+    color: var(--text-muted);
+    font-size: var(--fs-sm);
+}
+
+.emptyIcon { font-size: 2.2rem; }

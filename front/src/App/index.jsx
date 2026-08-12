@@ -1,29 +1,24 @@
-import { useEffect, useMemo } from 'react';
-import { Route, Routes, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Route, Routes } from 'react-router-dom';
 import { cambiarThema } from '../Core/helper';
-import { settings } from '../Core/settings';
-import { Theme } from '../Components/Theme';
 
 import { Main as MainPage } from '../Pages/Main';
-import { Index as IndexPage } from '../Pages/Index';
-import { Test as TestPage } from '../Pages/Test';
-import { Chat as ChatPage } from '../Pages/Chat';
-
-import { Login as LoginPage } from '../Pages/Login';
+import { Galeria as GaleriaPage } from '../Pages/Galeria';
 import { P404 } from '../Pages/P404';
+
+import { AdminGuard } from '../Pages/Admin/AdminGuard';
+import { AdminLogin } from '../Pages/Admin/Login';
+import { AdminFiguras } from '../Pages/Admin/Figuras';
+import { AdminEtiquetas } from '../Pages/Admin/Etiquetas';
 
 import { store } from './store';
 import { Provider } from "react-redux";
 import { useStates } from '../Hooks/useStates';
 
-import { GeneralNotification } from '../Components/Modals/general/GeneralNotification'; 
-
+import { ToastStack } from '../Components/Toast';
 
 function AppUI() {
-    const { ls, s, f } = useStates();
-    const logged = useMemo(() => s.auth?.logged, [s.auth?.logged]);
-    // interruptor en Index (ls.showLogin); settings.showLogin es el valor por defecto
-    const showLogin = useMemo(() => ls.showLogin ?? settings.showLogin, [ls.showLogin]);
+    const { ls, f } = useStates();
 
     useEffect(() => {
         cambiarThema(ls?.theme);
@@ -31,43 +26,29 @@ function AppUI() {
 
     useEffect(() => {
         f.app.getModes();
-        // f.u1('sidebar', 'open', true);
     }, []);
-
-    useEffect(() => {
-        if (!showLogin) return;
-        f.auth.validateLogin();
-    }, [location.href, showLogin]);
-
-    if (showLogin && !logged) {
-        return (
-            <div className={`text-[var(--my-minor)] bg-my-${ls.theme}`}>
-                <Routes>
-                    <Route path="" element={ <LoginPage /> } />
-                    <Route path="test" element={ <TestPage /> } />
-                    <Route path="*" element={ <LoginPage /> } />
-                </Routes>
-                <Theme />
-                {!!s.modals?.general?.notification &&
-                <GeneralNotification />}
-            </div>
-        )
-    }
 
     return (
         <div className={`text-[var(--my-minor)] bg-my-${ls.theme}`}>
             <Routes>
-                <Route path="" element={ <MainPage /> } >
-                    <Route path="" element={ <IndexPage /> } />
-                    <Route path="chat/*" element={ <ChatPage /> } />
-                    <Route path="test/*" element={ <TestPage /> } />
-                    <Route path="*" element={ <P404 /> } />
-                    {/* -----------   /404   ----------- */}
+                {/* -----------   ADMIN (no indexado)   ----------- */}
+                <Route path="admin/login" element={<AdminLogin />} />
+                <Route path="admin" element={<AdminGuard><MainPage /></AdminGuard>}>
+                    <Route path="" element={<AdminFiguras />} />
+                    <Route path="figuras" element={<AdminFiguras />} />
+                    <Route path="etiquetas" element={<AdminEtiquetas />} />
+                    <Route path="*" element={<P404 />} />
+                </Route>
+
+                {/* -----------   CATALOGO PUBLICO   ----------- */}
+                <Route path="" element={<MainPage />}>
+                    <Route path="" element={<GaleriaPage />} />
+                    <Route path="figura/:id" element={<GaleriaPage />} />
+                    <Route path="*" element={<P404 />} />
                 </Route>
             </Routes>
 
-            {!!s.modals?.general?.notification &&
-            <GeneralNotification />}
+            <ToastStack />
         </div>
     );
 }

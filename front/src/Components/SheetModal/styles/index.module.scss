@@ -1,0 +1,105 @@
+.overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(2px);
+    animation: fadeIn var(--t-fast);
+}
+
+.sheet {
+    --sheet-max-w: 640px;
+    width: 100%;
+    max-width: var(--sheet-max-w);
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    box-shadow: var(--shadow-lg);
+    animation: slideUp var(--t-slow);
+}
+
+.grabber {
+    width: 40px;
+    height: 4px;
+    margin: var(--sp-2) auto 0;
+    border-radius: var(--r-pill);
+    background: var(--border-strong);
+    flex-shrink: 0;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: var(--sp-4) var(--sp-5) var(--sp-3);
+    flex-shrink: 0;
+}
+
+.title {
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-bold);
+    color: var(--text);
+    letter-spacing: -0.01em;
+}
+
+.closeBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border: none;
+    border-radius: 50%;
+    background: var(--surface-2);
+    color: var(--text-soft);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background var(--t-fast), color var(--t-fast);
+    &:hover { background: var(--surface-3); color: var(--text); }
+}
+
+.body {
+    overflow-y: auto;
+    padding: 0 var(--sp-5) var(--sp-5);
+    flex: 1;
+}
+
+.footer {
+    display: flex;
+    gap: var(--sp-3);
+    padding: var(--sp-4) var(--sp-5);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    background: var(--surface-1);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+@keyframes slideUp {
+    from { transform: translateY(24px); opacity: 0.6; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+@media (min-width: 768px) {
+    .overlay {
+        align-items: center;
+        padding: var(--sp-5);
+    }
+    .sheet {
+        border-radius: var(--r-xl);
+        border-bottom: 1px solid var(--border);
+        max-height: 85vh;
+    }
+    .grabber { display: none; }
+}

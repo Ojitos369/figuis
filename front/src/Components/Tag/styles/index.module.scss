@@ -1,0 +1,62 @@
+.tag {
+    --tag-color: #6366f1;
+    --tag-active-text: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: var(--r-pill);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    line-height: 1.4;
+    color: var(--tag-color);
+    background: color-mix(in srgb, var(--tag-color) 16%, transparent);
+    border: 1px solid color-mix(in srgb, var(--tag-color) 30%, transparent);
+    white-space: nowrap;
+    user-select: none;
+
+    .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--tag-color);
+        flex-shrink: 0;
+    }
+
+    &.sm {
+        padding: 2px 8px;
+        font-size: 0.7rem;
+    }
+
+    &.clickable {
+        cursor: pointer;
+        transition: background var(--t-fast), transform 0.1s ease;
+        &:hover { background: color-mix(in srgb, var(--tag-color) 26%, transparent); }
+        &:active { transform: scale(0.97); }
+    }
+
+    &.active {
+        background: var(--tag-color);
+        color: var(--tag-active-text);
+        border-color: var(--tag-color);
+        .dot { background: var(--tag-active-text); }
+    }
+
+    .removeBtn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 14px;
+        height: 14px;
+        margin-left: 2px;
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        background: transparent;
+        color: inherit;
+        font-size: 0.6rem;
+        cursor: pointer;
+        opacity: 0.7;
+        &:hover { opacity: 1; background: rgba(0,0,0,0.15); }
+    }
+}

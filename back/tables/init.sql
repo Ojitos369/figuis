@@ -1,5 +1,9 @@
 -- postgresql
 /*
+-- OJO: usa un volumen CON NOMBRE (figuis-db-data). Si vuelves a correr este
+-- docker run tras un "docker rm -f figuis-dbl", los datos se conservan porque
+-- el volumen no se borra (a diferencia de un volumen anonimo, que se pierde).
+-- Mejor aun: usa docker-compose.yml (servicio figuis-db) en vez de esto.
 docker rm -f figuis-dbl && \
 docker run --name figuis-dbl -d \
     -e POSTGRES_DB=figuis \
@@ -7,6 +11,7 @@ docker run --name figuis-dbl -d \
     -e POSTGRES_PASSWORD=figuis \
     -e TZ=America/Mexico_City \
     -p 5442:5432 \
+    -v figuis-db-data:/var/lib/postgresql/data \
     postgres
 
 docker exec -it figuis-dbl psql -U figuis -d figuis
@@ -16,7 +21,7 @@ export DB_HOST="localhost"
 export DB_USER="figuis"
 export DB_PASSWORD="figuis"
 export DB_NAME="figuis"
-export DB_PORT="5446"
+export DB_PORT="5442"
 export ADMIN_KEY="123456"
 
 */
@@ -79,3 +84,13 @@ CREATE TABLE IF NOT EXISTS figura_archivos (
     created_at TIMESTAMP DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_figura_archivos_figura ON figura_archivos(figura_id);
+
+
+-- Seed de cuentas de prueba (idempotente). Borrar antes de pasar a prod.
+INSERT INTO usuarios (id, nombre, usuario, password)
+SELECT gen_random_uuid(), 'Erick Garcia', 'ojitos369', '$argon2id$v=19$m=65536,t=3,p=4$x/gfY+z93/ufk9L6/x8j5A$hSRMbAE7gsevFAi3RJkVUtY1bmr3M9TAs5uNI0EDOhc'
+WHERE NOT EXISTS (SELECT 1 FROM usuarios WHERE lower(usuario) = 'ojitos369');
+
+INSERT INTO usuarios (id, nombre, usuario, password)
+SELECT gen_random_uuid(), 'test', 'test', '$argon2id$v=19$m=65536,t=3,p=4$8r63FgLgfI/xvjdmDKF0rg$Z2qMlvUv0QukeCVP16zMTRzcT4X2f6NZs2NQ6AYxkFk'
+WHERE NOT EXISTS (SELECT 1 FROM usuarios WHERE lower(usuario) = 'test');

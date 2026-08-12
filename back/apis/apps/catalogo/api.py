@@ -75,7 +75,7 @@ class GetFiguras(NoSession, BaseApi):
                 ids = list(etiquetas_raw)
             if ids:
                 self.joins += " JOIN figura_etiquetas fe_filter ON fe_filter.figura_id = f.id\n"
-                self.filtros += " AND fe_filter.etiqueta_id = ANY(:etiquetas_ids)\n"
+                self.filtros += " AND fe_filter.etiqueta_id = ANY(:etiquetas_ids::uuid[])\n"
                 self.query_data["etiquetas_ids"] = ids
 
 

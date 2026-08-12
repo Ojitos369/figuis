@@ -1,6 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-const appName = "reapi";
+const appName = "figuis";
 
 const fs = createSlice({
     name: "fs",
@@ -309,12 +309,28 @@ const fs = createSlice({
                 }
             }
             localStorage.setItem(appName, JSON.stringify(s.ls));
+        },
+        addToast: (s, action) => {
+            const { toast } = action.payload;
+            const list = s.s.general?.toasts || [];
+            s.s = {
+                ...s.s,
+                general: { ...s.s?.general, toasts: [...list, toast] }
+            };
+        },
+        removeToast: (s, action) => {
+            const { id } = action.payload;
+            const list = s.s.general?.toasts || [];
+            s.s = {
+                ...s.s,
+                general: { ...s.s?.general, toasts: list.filter(t => t.id !== id) }
+            };
         }
     }
 });
 
-const { rs, u0, u1, u2, u3, u4, u5, u6, u7, u8, u9, lu0, lu1, lu2, lu3, lu4, lu5 } = fs.actions;
-const f = {rs, u0, u1, u2, u3, u4, u5, u6, u7, u8, u9};
+const { rs, u0, u1, u2, u3, u4, u5, u6, u7, u8, u9, lu0, lu1, lu2, lu3, lu4, lu5, addToast, removeToast } = fs.actions;
+const f = {rs, u0, u1, u2, u3, u4, u5, u6, u7, u8, u9, addToast, removeToast};
 const lf = {u0: lu0, u1: lu1, u2: lu2, u3: lu3, u4: lu4, u5: lu5};
 // console.log('lf', lf);
 const fsReducer = fs.reducer;

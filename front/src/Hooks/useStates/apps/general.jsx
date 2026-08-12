@@ -1,12 +1,22 @@
+let toastSeq = 0;
+
 export const general = props => {
-    const { u1, u2 } = props;
-    const notificacion = props => {
-        u1("general", "notification", props);
-        u2("modals", "general", "notification", true);
-    }
+    const { addToast, removeToast } = props;
+
+    // Notificacion tipo toast: no bloqueante, se autodescarta sola.
+    const notificacion = (data) => {
+        const id = `t${Date.now()}_${toastSeq++}`;
+        addToast({
+            id,
+            title: data.title || '',
+            message: data.message || '',
+            mode: data.mode || 'info',
+        });
+        const duration = data.duration || 3500;
+        setTimeout(() => removeToast(id), duration);
+    };
 
     return {
-        notificacion
-    }
-}
-
+        notificacion, removeToast
+    };
+};

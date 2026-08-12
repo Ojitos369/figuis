@@ -1,0 +1,26 @@
+.media {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.audioViewer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-4);
+    width: 100%;
+    height: 100%;
+    padding: var(--sp-5);
+}
+
+.audioIcon {
+    font-size: 3rem;
+}
+
+.audioPlayer {
+    width: 100%;
+    max-width: 340px;
+}

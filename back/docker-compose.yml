@@ -1,4 +1,31 @@
 services:
+    # ----------------------   BASE DE DATOS (PROD)   ----------------------
+    # figuis-dbp = la que maneja este compose. figuis-dbl (dev) se corre aparte
+    # a mano (ver comentario en tables/init.sql) y no se toca desde aqui.
+    # Puerto host 5472 -> contenedor 5432. El back se conecta por red docker
+    # (DB_HOST=figuis-dbp, DB_PORT=5432), no por el puerto host.
+    figuis-dbp:
+        image: postgres:16
+        container_name: figuis-dbp
+        restart: unless-stopped
+        environment:
+            POSTGRES_DB: figuis
+            POSTGRES_USER: figuis
+            POSTGRES_PASSWORD: figuis
+            TZ: America/Mexico_City
+        ports:
+            - "5472:5432"
+        volumes:
+            - figuis-dbp-data:/var/lib/postgresql/data
+        networks:
+            - figuis-netp
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U figuis -d figuis"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    # ----------------------   WEB (FastAPI/uvicorn)   ----------------------
     figuis-web:
         build: .
         command: ["/usr/bin/supervisord"]
@@ -9,10 +36,17 @@ services:
         volumes:
             - .:/usr/src/app
         ports:
-            - "8369:8000"
+            - "8372:8000"
+        depends_on:
+            figuis-dbp:
+                condition: service_healthy
         networks:
-            - figuis-net
+            - figuis-netp
 
 networks:
-    figuis-net:
+    figuis-netp:
+        name: figuis-netp
         driver: bridge
+
+volumes:
+    figuis-dbp-data:
