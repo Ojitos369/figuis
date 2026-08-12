@@ -1,20 +1,17 @@
 export const PageHeader = ({ ls }) => {
-    const { style, q, setQ, estatus, setEstatus, openCreate } = ls;
+    const { style, activeFiltersCount, setFiltersOpen, openCreate, pagination } = ls;
+
+    const range = pagination && pagination.total > 0
+        ? `${(pagination.page - 1) * pagination.limit + 1}-${Math.min(pagination.page * pagination.limit, pagination.total)}/${pagination.total}`
+        : null;
+
     return (
         <div className={style.pageHeader}>
-            <div className={style.searchRow}>
-                <input
-                    type="text"
-                    className={style.searchInput}
-                    placeholder="Buscar figuras..."
-                    value={q}
-                    onChange={e => setQ(e.target.value)}
-                />
-                <select className={style.statusSelect} value={estatus} onChange={e => setEstatus(e.target.value)}>
-                    <option value="">Todos</option>
-                    <option value="publico">Público</option>
-                    <option value="borrador">Borrador</option>
-                </select>
+            <div className={style.headerRow}>
+                {!!range && <span className={style.rangeBadge}>{range}</span>}
+                <button type="button" className={style.filtersBtn} onClick={() => setFiltersOpen(true)}>
+                    🔍 Filtros {!!activeFiltersCount && <span className={style.filtersBadge}>{activeFiltersCount}</span>}
+                </button>
             </div>
             <button type="button" className={style.newBtn} onClick={openCreate}>
                 <span>+</span> Nueva figura

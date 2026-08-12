@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import struct
 
 from core.bases.apis import AdminApi, pln
@@ -25,6 +26,15 @@ def stl_esta_completo(contents: bytes) -> bool:
 
 
 class GetFigurasAdmin(AdminApi):
+    ORDEN_MAP = {
+        "nombre_asc": "f.nombre ASC",
+        "nombre_desc": "f.nombre DESC",
+        "fecha_desc": "f.created_at DESC",
+        "fecha_asc": "f.created_at ASC",
+        "tags_desc": "num_etiquetas DESC, f.nombre ASC",
+        "media_desc": "num_media DESC, f.nombre ASC",
+    }
+
     def main(self):
         self.show_me()
         self.get_filtros()
@@ -46,6 +56,8 @@ class GetFigurasAdmin(AdminApi):
         except Exception: page = 1
         offset = (page - 1) * limit
 
+        orden_sql = self.ORDEN_MAP.get(self.data.get("orden"), self.ORDEN_MAP["fecha_desc"])
+
         query = f"""
         SELECT f.*,
             (
@@ -60,12 +72,14 @@ class GetFigurasAdmin(AdminApi):
                 FROM figura_etiquetas fe
                 JOIN etiquetas e ON e.id = fe.etiqueta_id
                 WHERE fe.figura_id = f.id
-            ) as etiquetas
+            ) as etiquetas,
+            (SELECT COUNT(*) FROM figura_etiquetas fe2 WHERE fe2.figura_id = f.id) as num_etiquetas,
+            (SELECT COUNT(*) FROM figura_archivos fa5 WHERE fa5.figura_id = f.id) as num_media
         FROM figuras f
         {self.joins}
         WHERE 1=1 {self.filtros}
         GROUP BY f.id
-        ORDER BY f.orden ASC, f.created_at DESC
+        ORDER BY {orden_sql}
         LIMIT :limit OFFSET :offset
         """
         query_data = {**self.query_data, "limit": limit, "offset": offset}
@@ -85,14 +99,46 @@ class GetFigurasAdmin(AdminApi):
 
         q = self.data.get("q", None)
         if q:
-            q = q.strip().lower()
-            self.filtros += " AND (LOWER(f.nombre) LIKE :q OR LOWER(f.descripcion) LIKE :q)\n"
-            self.query_data["q"] = f"%{q}%"
+            q = q.strip()
+            try:
+                re.compile(q)
+                is_regex = True
+            except re.error:
+                is_regex = False
+
+            if is_regex:
+                self.filtros += " AND (f.nombre ~* :q OR f.descripcion ~* :q OR f.id::text ~* :q)\n"
+                self.query_data["q"] = q
+            else:
+                q_like = q.lower()
+                self.filtros += " AND (LOWER(f.nombre) LIKE :q OR LOWER(f.descripcion) LIKE :q OR LOWER(f.id::text) LIKE :q)\n"
+                self.query_data["q"] = f"%{q_like}%"
 
         estatus = self.data.get("estatus", None)
         if estatus:
             self.filtros += " AND f.estatus = :estatus\n"
             self.query_data["estatus"] = estatus
+
+        desde = self.data.get("desde", None)
+        if desde:
+            self.filtros += " AND f.created_at >= :desde\n"
+            self.query_data["desde"] = desde
+
+        hasta = self.data.get("hasta", None)
+        if hasta:
+            self.filtros += " AND f.created_at < (:hasta::date + interval '1 day')\n"
+            self.query_data["hasta"] = hasta
+
+        etiquetas_raw = self.data.get("etiquetas", None)
+        if etiquetas_raw:
+            if isinstance(etiquetas_raw, str):
+                ids = [e for e in etiquetas_raw.split(",") if e]
+            else:
+                ids = list(etiquetas_raw)
+            if ids:
+                self.joins += " JOIN figura_etiquetas fe_filter ON fe_filter.figura_id = f.id\n"
+                self.filtros += " AND fe_filter.etiqueta_id = ANY(:etiquetas_ids::uuid[])\n"
+                self.query_data["etiquetas_ids"] = ids
 
 
 class GetFiguraAdmin(AdminApi):

@@ -1,5 +1,6 @@
 import { localStates, localEffects } from './localStates';
 import { PageHeader } from './components/PageHeader';
+import { AdminFiltersSheet } from './components/AdminFiltersSheet';
 import { FiguraCard } from './components/FiguraCard';
 import { FiguraCardSkeleton } from './components/FiguraCardSkeleton';
 import { FiguraForm } from './components/FiguraForm';
@@ -14,6 +15,7 @@ export const AdminFiguras = () => {
     return (
         <div className={ls.style.adminFiguras}>
             <PageHeader ls={ls} />
+            <Pagination pagination={ls.pagination} onChange={ls.setPage} />
 
             {ls.loading && !ls.figuras.length ? (
                 <div className={ls.style.grid}>
@@ -35,6 +37,8 @@ export const AdminFiguras = () => {
             )}
 
             <Pagination pagination={ls.pagination} onChange={ls.setPage} />
+
+            <AdminFiltersSheet ls={ls} />
 
             <FiguraForm
                 open={ls.showForm}
