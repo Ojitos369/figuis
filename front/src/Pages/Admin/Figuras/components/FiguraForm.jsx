@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { useStates } from '../../../../Hooks/useStates';
 import { SheetModal } from '../../../../Components/SheetModal';
 import { MediaDropzone } from './MediaDropzone';
+import { Model3DDropzone } from './Model3DDropzone';
 import { TagInput } from './TagInput';
 import style from '../styles/form.module.scss';
 
 const emptyForm = { nombre: '', descripcion: '', estatus: 'borrador', etiquetas: [] };
+const emptyArchivos = { resultado: [], relacionado: [], modelo_3d: [] };
 
 export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
     const { s, f } = useStates();
@@ -13,8 +15,7 @@ export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
 
     const [currentId, setCurrentId] = useState(figuraId || null);
     const [form, setForm] = useState(emptyForm);
-    const [resultado, setResultado] = useState([]);
-    const [relacionados, setRelacionados] = useState([]);
+    const [archivos, setArchivos] = useState(emptyArchivos);
     const [uploading, setUploading] = useState(false);
 
     useEffect(() => {
@@ -30,13 +31,15 @@ export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
                     estatus: data.estatus || 'borrador',
                     etiquetas: data.etiquetas || [],
                 });
-                setResultado(data.resultado || []);
-                setRelacionados(data.relacionados || []);
+                setArchivos({
+                    resultado: data.resultado || [],
+                    relacionado: data.relacionados || [],
+                    modelo_3d: data.modelos_3d || [],
+                });
             });
         } else {
             setForm(emptyForm);
-            setResultado([]);
-            setRelacionados([]);
+            setArchivos(emptyArchivos);
         }
     }, [open, figuraId]);
 
@@ -50,8 +53,11 @@ export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
             if (!currentId) {
                 setCurrentId(res.id);
                 f.admin.getFigura(res.id, (data) => {
-                    setResultado(data?.resultado || []);
-                    setRelacionados(data?.relacionados || []);
+                    setArchivos({
+                        resultado: data?.resultado || [],
+                        relacionado: data?.relacionados || [],
+                        modelo_3d: data?.modelos_3d || [],
+                    });
                 });
             }
             onSaved?.();
@@ -67,8 +73,7 @@ export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
             f.admin.saveFiguraArchivo({ figura_id: currentId, tipo, file }, (res) => {
                 if (res) {
                     const nuevo = { id: res.id, archivo_url: res.url, tipo: res.tipo };
-                    if (tipo === 'resultado') setResultado(prev => [...prev, nuevo]);
-                    else setRelacionados(prev => [...prev, nuevo]);
+                    setArchivos(prev => ({ ...prev, [tipo]: [...prev[tipo], nuevo] }));
                 }
                 pending -= 1;
                 if (pending <= 0) setUploading(false);
@@ -78,8 +83,7 @@ export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
 
     const handleDeleteArchivo = (archivo, tipo) => {
         f.admin.deleteFiguraArchivo(archivo.id, () => {
-            if (tipo === 'resultado') setResultado(prev => prev.filter(a => a.id !== archivo.id));
-            else setRelacionados(prev => prev.filter(a => a.id !== archivo.id));
+            setArchivos(prev => ({ ...prev, [tipo]: prev[tipo].filter(a => a.id !== archivo.id) }));
         });
     };
 
@@ -144,7 +148,7 @@ export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
                         <MediaDropzone
                             label="Resultado (portada)"
                             hint="La figura terminada. La primera imagen es la portada del catálogo."
-                            items={resultado}
+                            items={archivos.resultado}
                             uploading={uploading}
                             onFiles={(files) => handleFiles(files, 'resultado')}
                             onDelete={(a) => handleDeleteArchivo(a, 'resultado')}
@@ -153,10 +157,19 @@ export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
                         <MediaDropzone
                             label="Archivos relacionados"
                             hint="Fotos de referencia usadas para generar la figura."
-                            items={relacionados}
+                            items={archivos.relacionado}
                             uploading={uploading}
                             onFiles={(files) => handleFiles(files, 'relacionado')}
                             onDelete={(a) => handleDeleteArchivo(a, 'relacionado')}
+                        />
+
+                        <Model3DDropzone
+                            label="Modelo 3D"
+                            hint="Archivo .stl imprimible, con previsualización interactiva."
+                            items={archivos.modelo_3d}
+                            uploading={uploading}
+                            onFiles={(files) => handleFiles(files, 'modelo_3d')}
+                            onDelete={(a) => handleDeleteArchivo(a, 'modelo_3d')}
                         />
                     </>
                 )}

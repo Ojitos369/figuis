@@ -118,6 +118,30 @@
     opacity: 0.45;
 }
 
+.thumbBadge {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 7px;
+    border-radius: var(--r-pill);
+    font-size: 0.66rem;
+    font-weight: var(--fw-semibold);
+    color: #fff;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(2px);
+}
+
+.thumbBadge3d {
+    top: 6px;
+    left: 6px;
+}
+
+.thumbBadgeMedia {
+    bottom: 6px;
+    right: 6px;
+}
+
 .figBody {
     display: flex;
     flex-direction: column;
@@ -242,7 +266,7 @@
     white-space: pre-wrap;
 }
 
-.shareBtn {
+.shareBtn, .view3dBtn {
     align-self: flex-start;
     padding: 0.6rem 1.1rem;
     font-size: var(--fs-sm);
@@ -255,4 +279,12 @@
     transition: background var(--t-fast);
 
     &:hover { background: var(--surface-3); }
+}
+
+.view3dBtn {
+    border-color: var(--accent);
+    color: var(--accent-hover);
+    background: var(--accent-soft);
+
+    &:hover { background: var(--accent-soft-2); }
 }

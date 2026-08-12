@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { useStates } from '../../../Hooks/useStates';
 import { SheetModal } from '../../../Components/SheetModal';
 import { Tag } from '../../../Components/Tag';
@@ -6,18 +6,25 @@ import { Loader } from '../../../Components/Loader';
 import { MediaThumb } from '../../../Components/MediaThumb';
 import { MediaViewer } from '../../../Components/MediaViewer';
 import { ReactionBar } from '../../../Components/ReactionBar';
+import { mediaUrl } from '../../../constants/api';
+
+// three.js + fiber/drei pesan bastante: solo se descargan si el usuario
+// realmente activa la previsualizacion 3D.
+const STLViewer = lazy(() => import('../../../Components/STLViewer').then(m => ({ default: m.STLViewer })));
 
 export const DetailModal = ({ ls }) => {
     const { f } = useStates();
     const { style, id, figuraActual, loadingDetail, closeDetail } = ls;
     const [activeIdx, setActiveIdx] = useState(0);
+    const [show3D, setShow3D] = useState(false);
 
     const open = !!id;
     const notFound = open && figuraActual === false;
     const data = open && figuraActual ? figuraActual : null;
     const gallery = data ? [...(data.resultado || []), ...(data.relacionados || [])] : [];
+    const modelo3d = data?.modelos_3d?.[0];
 
-    useEffect(() => { setActiveIdx(0); }, [id]);
+    useEffect(() => { setActiveIdx(0); setShow3D(false); }, [id]);
 
     const share = () => {
         const url = `${window.location.origin}${window.location.pathname}#/figura/${id}`;
@@ -42,7 +49,13 @@ export const DetailModal = ({ ls }) => {
 
             {!!data && (
                 <div className={style.detailBody}>
-                    {!!gallery.length && (
+                    {show3D && modelo3d ? (
+                        <div className={style.mainViewer}>
+                            <Suspense fallback={<div className={style.detailLoader}><Loader label="Cargando visor 3D..." /></div>}>
+                                <STLViewer url={mediaUrl(modelo3d.archivo_url)} />
+                            </Suspense>
+                        </div>
+                    ) : !!gallery.length && (
                         <>
                             <div className={style.mainViewer}>
                                 <MediaViewer url={gallery[activeIdx]?.archivo_url} alt={data.nombre} />
@@ -62,6 +75,12 @@ export const DetailModal = ({ ls }) => {
                                 </div>
                             )}
                         </>
+                    )}
+
+                    {!!modelo3d && (
+                        <button type="button" className={style.view3dBtn} onClick={() => setShow3D(v => !v)}>
+                            {show3D ? '🖼 Ver fotos' : '🧊 Previsualizar en 3D'}
+                        </button>
                     )}
 
                     {!!data.etiquetas?.length && (

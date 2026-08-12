@@ -35,6 +35,7 @@ class GetFigurasAdmin(AdminApi):
                 ORDER BY fa.orden ASC, fa.created_at ASC LIMIT 1
             ) as portada,
             (SELECT COUNT(*) FROM figura_archivos fa2 WHERE fa2.figura_id = f.id) as num_archivos,
+            EXISTS(SELECT 1 FROM figura_archivos fa3 WHERE fa3.figura_id = f.id AND fa3.tipo = 'modelo_3d') as tiene_3d,
             (
                 SELECT json_agg(json_build_object('id', e.id, 'nombre', e.nombre, 'color', e.color))
                 FROM figura_etiquetas fe
@@ -92,6 +93,7 @@ class GetFiguraAdmin(AdminApi):
         archivos = self.d2d(archivos)
         figura["resultado"] = [a for a in archivos if a["tipo"] == "resultado"]
         figura["relacionados"] = [a for a in archivos if a["tipo"] == "relacionado"]
+        figura["modelos_3d"] = [a for a in archivos if a["tipo"] == "modelo_3d"]
 
         etiquetas = self.conexion.consulta_asociativa(
             """
@@ -188,7 +190,7 @@ class SaveFiguraArchivo(AdminApi):
         figura_id = self.data.get("figura_id")
         file = self.data.get("file")
         tipo = self.data.get("tipo", "relacionado")
-        if tipo not in ("resultado", "relacionado"):
+        if tipo not in ("resultado", "relacionado", "modelo_3d"):
             tipo = "relacionado"
         if not figura_id or not file:
             raise self.MYE("Faltan datos")
@@ -200,14 +202,15 @@ class SaveFiguraArchivo(AdminApi):
         folder_path = os.path.join(MEDIA_DIR, "figuras", str(figura_id))
         os.makedirs(folder_path, exist_ok=True)
 
-        filename = f"{self.get_id(hex=True, long=12)}_{file.filename}"
+        id_archivo = self.get_id()
+        ext = os.path.splitext(file.filename or "")[1].lower()
+        filename = f"{id_archivo}{ext}"
         file_path = os.path.join(folder_path, filename)
         contents = file.file.read()
         with open(file_path, 'wb') as f:
             f.write(contents)
 
         archivo_url = f"figuras/{figura_id}/{filename}"
-        id_archivo = self.get_id()
         self.conexion.ejecutar(
             "INSERT INTO figura_archivos (id, figura_id, archivo_url, tipo) VALUES (:id, :figura_id, :archivo_url, :tipo)",
             {"id": id_archivo, "figura_id": figura_id, "archivo_url": archivo_url, "tipo": tipo}
