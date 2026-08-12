@@ -9,7 +9,7 @@ export const localStates = () => {
 
     const init = () => {
         setIsInMd(window.innerWidth >= 768);
-        setSidebarOpen(window.innerWidth >= 768);
+        setSidebarOpen(false);
     };
 
     const closeBars = () => {

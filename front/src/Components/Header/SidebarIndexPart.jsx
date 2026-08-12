@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { localStates } from "./localStates";
 import { SidebarIcon } from "../SidebarIcon";
 
@@ -9,10 +8,6 @@ export const SidebarIndexPart = () => {
             <div className={`${style.sidebarIcon}`}>
                 <SidebarIcon />
             </div>
-            <Link to="/" className={`${style.brand}`}>
-                <span className={`${style.brandDot}`} />
-                <span className={`${style.brandName}`}>figuis</span>
-            </Link>
         </div>
     );
 };
