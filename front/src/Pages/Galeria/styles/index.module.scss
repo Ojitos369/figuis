@@ -122,6 +122,63 @@
     gap: var(--sp-2);
 }
 
+.searchHint {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.dateRangeRow {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+}
+
+.dateInput {
+    flex: 1;
+    min-width: 0;
+    padding: 0.6rem 0.7rem;
+    font-size: var(--fs-sm);
+    border-radius: var(--r-md);
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    color: var(--text);
+    transition: border-color var(--t-fast), box-shadow var(--t-fast);
+
+    &:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: var(--accent-glow);
+    }
+}
+
+.dateRangeSep {
+    color: var(--text-muted);
+    font-size: var(--fs-sm);
+}
+
+.tagSearchInput {
+    width: 100%;
+    padding: 0.55rem 0.8rem;
+    font-size: var(--fs-sm);
+    border-radius: var(--r-md);
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    color: var(--text);
+    transition: border-color var(--t-fast), box-shadow var(--t-fast);
+
+    &::placeholder { color: var(--text-muted); }
+    &:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: var(--accent-glow);
+    }
+}
+
+.tagSearchEmpty {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+}
+
 .applyFiltersBtn {
     width: 100%;
     padding: var(--sp-3) var(--sp-4);

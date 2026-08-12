@@ -22,6 +22,8 @@ export const localStates = () => {
     const [selectedTags, setSelectedTags] = createState(['galeria', 'selectedTags'], []);
     const [page, setPage] = createState(['galeria', 'page'], 1);
     const [orden, setOrdenRaw] = createState(['galeria', 'orden'], 'fecha_desc');
+    const [desde, setDesde] = createState(['galeria', 'desde'], '');
+    const [hasta, setHasta] = createState(['galeria', 'hasta'], '');
 
     // El sheet de filtros se abre/cierra con el router (?filtros=1), no con un
     // booleano suelto: asi el boton "atras" del navegador tambien lo cierra.
@@ -37,11 +39,13 @@ export const localStates = () => {
             q: q || undefined,
             etiquetas: selectedTags.length ? selectedTags.join(',') : undefined,
             orden: orden || undefined,
+            desde: desde || undefined,
+            hasta: hasta || undefined,
             page: 1,
             limit: 24,
         });
         navigate('/');
-    }, [navigate, f.catalogo, q, selectedTags, orden]);
+    }, [navigate, f.catalogo, q, selectedTags, orden, desde, hasta]);
 
     const toggleTag = useCallback((tagId) => {
         const next = selectedTags.includes(tagId)
@@ -65,12 +69,14 @@ export const localStates = () => {
         setQ('');
         setSelectedTags([]);
         setOrdenRaw('fecha_desc');
+        setDesde('');
+        setHasta('');
         setPage(1);
     }, []);
 
     const activeFiltersCount = useMemo(
-        () => selectedTags.length + (orden !== 'fecha_desc' ? 1 : 0) + (q ? 1 : 0),
-        [selectedTags, orden, q]
+        () => selectedTags.length + (orden !== 'fecha_desc' ? 1 : 0) + (q ? 1 : 0) + (desde ? 1 : 0) + (hasta ? 1 : 0),
+        [selectedTags, orden, q, desde, hasta]
     );
 
     const openDetail = useCallback((figuraId) => {
@@ -85,7 +91,8 @@ export const localStates = () => {
         style, id, figuras, pagination, loading, etiquetas,
         figuraActual, loadingDetail,
         q, setQ: setQAndResetPage, selectedTags, toggleTag, page, setPage,
-        orden, setOrden, filtersOpen, openFilters, closeFilters, applyFilters, activeFiltersCount, clearFilters,
+        orden, setOrden, desde, setDesde, hasta, setHasta,
+        filtersOpen, openFilters, closeFilters, applyFilters, activeFiltersCount, clearFilters,
         openDetail, closeDetail,
     };
 };
@@ -105,12 +112,14 @@ export const localEffects = (ls) => {
                 q: ls.q || undefined,
                 etiquetas: ls.selectedTags.length ? ls.selectedTags.join(',') : undefined,
                 orden: ls.orden || undefined,
+                desde: ls.desde || undefined,
+                hasta: ls.hasta || undefined,
                 page: ls.page,
                 limit: 24,
             });
         }, 300);
         return () => clearTimeout(t);
-    }, [ls.q, ls.selectedTags, ls.orden, ls.page]);
+    }, [ls.q, ls.selectedTags, ls.orden, ls.desde, ls.hasta, ls.page]);
 
     useEffect(() => {
         if (ls.id) {

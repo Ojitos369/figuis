@@ -16,7 +16,9 @@ export const CatalogFilterButton = ({ style }) => {
     const selectedTags = useMemo(() => s.galeria?.selectedTags || [], [s.galeria?.selectedTags]);
     const orden = useMemo(() => s.galeria?.orden || 'fecha_desc', [s.galeria?.orden]);
     const q = useMemo(() => s.galeria?.q || '', [s.galeria?.q]);
-    const activeCount = selectedTags.length + (orden !== 'fecha_desc' ? 1 : 0) + (q ? 1 : 0);
+    const desde = useMemo(() => s.galeria?.desde || '', [s.galeria?.desde]);
+    const hasta = useMemo(() => s.galeria?.hasta || '', [s.galeria?.hasta]);
+    const activeCount = selectedTags.length + (orden !== 'fecha_desc' ? 1 : 0) + (q ? 1 : 0) + (desde ? 1 : 0) + (hasta ? 1 : 0);
 
     if (!isCatalogo) return null;
 

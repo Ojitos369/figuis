@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { SheetModal } from '../../../Components/SheetModal';
 import { Tag } from '../../../Components/Tag';
 
@@ -13,8 +14,18 @@ const ORDEN_OPTS = [
 export const FiltersSheet = ({ ls }) => {
     const {
         style, q, setQ, etiquetas, selectedTags, toggleTag,
-        orden, setOrden, filtersOpen, closeFilters, applyFilters, activeFiltersCount, clearFilters,
+        orden, setOrden, desde, setDesde, hasta, setHasta,
+        filtersOpen, closeFilters, applyFilters, activeFiltersCount, clearFilters,
     } = ls;
+
+    // Solo filtra la lista de etiquetas que se muestra (no pega al back);
+    // no necesita vivir en la URL/redux, es puramente de este sheet.
+    const [tagSearch, setTagSearch] = useState('');
+    const filteredEtiquetas = useMemo(() => {
+        const q2 = tagSearch.trim().toLowerCase();
+        if (!q2) return etiquetas;
+        return etiquetas.filter(et => et.nombre.toLowerCase().includes(q2));
+    }, [etiquetas, tagSearch]);
 
     return (
         <SheetModal
@@ -29,16 +40,40 @@ export const FiltersSheet = ({ ls }) => {
             }
         >
             <div className={style.filtersBody}>
-                <div className={style.searchWrap}>
-                    <span className={style.searchIcon}>🔍</span>
-                    <input
-                        type="text"
-                        placeholder="Buscar figuras..."
-                        value={q}
-                        onChange={e => setQ(e.target.value)}
-                        className={style.searchInput}
-                        autoFocus
-                    />
+                <div className={style.filterSection}>
+                    <div className={style.searchWrap}>
+                        <span className={style.searchIcon}>🔍</span>
+                        <input
+                            type="text"
+                            placeholder="Buscar por nombre, descripción o id..."
+                            value={q}
+                            onChange={e => setQ(e.target.value)}
+                            className={style.searchInput}
+                            autoFocus
+                        />
+                    </div>
+                    <span className={style.searchHint}>Admite expresiones regulares (regex).</span>
+                </div>
+
+                <div className={style.filterSection}>
+                    <span className={style.filterSectionTitle}>Rango de fechas</span>
+                    <div className={style.dateRangeRow}>
+                        <input
+                            type="date"
+                            value={desde}
+                            onChange={e => setDesde(e.target.value)}
+                            className={style.dateInput}
+                            aria-label="Desde"
+                        />
+                        <span className={style.dateRangeSep}>—</span>
+                        <input
+                            type="date"
+                            value={hasta}
+                            onChange={e => setHasta(e.target.value)}
+                            className={style.dateInput}
+                            aria-label="Hasta"
+                        />
+                    </div>
                 </div>
 
                 <div className={style.filterSection}>
@@ -61,8 +96,15 @@ export const FiltersSheet = ({ ls }) => {
                 {!!etiquetas.length && (
                     <div className={style.filterSection}>
                         <span className={style.filterSectionTitle}>Etiquetas</span>
+                        <input
+                            type="text"
+                            placeholder="Filtrar etiquetas..."
+                            value={tagSearch}
+                            onChange={e => setTagSearch(e.target.value)}
+                            className={style.tagSearchInput}
+                        />
                         <div className={style.filterTagsWrap}>
-                            {etiquetas.map(et => (
+                            {filteredEtiquetas.map(et => (
                                 <Tag
                                     key={et.id}
                                     nombre={et.nombre}
@@ -71,6 +113,9 @@ export const FiltersSheet = ({ ls }) => {
                                     onClick={() => toggleTag(et.id)}
                                 />
                             ))}
+                            {!filteredEtiquetas.length && (
+                                <span className={style.tagSearchEmpty}>Sin coincidencias.</span>
+                            )}
                         </div>
                     </div>
                 )}

@@ -1,3 +1,5 @@
+import re
+
 from core.bases.apis import BaseApi, NoSession, pln
 
 
@@ -88,9 +90,34 @@ class GetFiguras(NoSession, BaseApi):
 
         q = self.data.get("q", None)
         if q:
-            q = q.strip().lower()
-            self.filtros += " AND (LOWER(f.nombre) LIKE :q OR LOWER(f.descripcion) LIKE :q)\n"
-            self.query_data["q"] = f"%{q}%"
+            q = q.strip()
+            try:
+                re.compile(q)
+                is_regex = True
+            except re.error:
+                is_regex = False
+
+            if is_regex:
+                # ~* = regex posix, sin distinguir mayusculas. Busca en nombre,
+                # descripcion e id (para poder pegar/buscar un id directo).
+                self.filtros += " AND (f.nombre ~* :q OR f.descripcion ~* :q OR f.id::text ~* :q)\n"
+                self.query_data["q"] = q
+            else:
+                # el texto no es un regex valido (parentesis sueltos, etc):
+                # se cae a busqueda de substring normal, sin tronar la consulta.
+                q_like = q.lower()
+                self.filtros += " AND (LOWER(f.nombre) LIKE :q OR LOWER(f.descripcion) LIKE :q OR LOWER(f.id::text) LIKE :q)\n"
+                self.query_data["q"] = f"%{q_like}%"
+
+        desde = self.data.get("desde", None)
+        if desde:
+            self.filtros += " AND f.created_at >= :desde\n"
+            self.query_data["desde"] = desde
+
+        hasta = self.data.get("hasta", None)
+        if hasta:
+            self.filtros += " AND f.created_at < (:hasta::date + interval '1 day')\n"
+            self.query_data["hasta"] = hasta
 
         etiquetas_raw = self.data.get("etiquetas", None)
         if etiquetas_raw:
