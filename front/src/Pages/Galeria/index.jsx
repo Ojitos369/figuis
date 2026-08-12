@@ -2,6 +2,7 @@ import { localStates, localEffects } from './localStates';
 import { PageHeader } from './components/PageHeader';
 import { FigurasGrid } from './components/FigurasGrid';
 import { DetailModal } from './components/DetailModal';
+import { FiltersSheet } from './components/FiltersSheet';
 import { Pagination } from '../../Components/Pagination';
 
 export const Galeria = () => {
@@ -14,6 +15,7 @@ export const Galeria = () => {
             <FigurasGrid ls={ls} />
             <Pagination pagination={ls.pagination} onChange={ls.setPage} />
             <DetailModal ls={ls} />
+            <FiltersSheet ls={ls} />
         </div>
     );
 };

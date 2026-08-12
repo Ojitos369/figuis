@@ -19,6 +19,8 @@ export const localStates = () => {
     const [q, setQ] = createState(['galeria', 'q'], '');
     const [selectedTags, setSelectedTags] = createState(['galeria', 'selectedTags'], []);
     const [page, setPage] = createState(['galeria', 'page'], 1);
+    const [orden, setOrdenRaw] = createState(['galeria', 'orden'], 'nombre_asc');
+    const [filtersOpen, setFiltersOpen] = createState(['galeria', 'filtersOpen'], false);
 
     const toggleTag = useCallback((tagId) => {
         const next = selectedTags.includes(tagId)
@@ -33,6 +35,23 @@ export const localStates = () => {
         setPage(1);
     }, []);
 
+    const setOrden = useCallback((value) => {
+        setOrdenRaw(value);
+        setPage(1);
+    }, []);
+
+    const clearFilters = useCallback(() => {
+        setQ('');
+        setSelectedTags([]);
+        setOrdenRaw('nombre_asc');
+        setPage(1);
+    }, []);
+
+    const activeFiltersCount = useMemo(
+        () => selectedTags.length + (orden !== 'nombre_asc' ? 1 : 0) + (q ? 1 : 0),
+        [selectedTags, orden, q]
+    );
+
     const openDetail = useCallback((figuraId) => {
         navigate(`/figura/${figuraId}`);
     }, [navigate]);
@@ -45,6 +64,7 @@ export const localStates = () => {
         style, id, figuras, pagination, loading, etiquetas,
         figuraActual, loadingDetail,
         q, setQ: setQAndResetPage, selectedTags, toggleTag, page, setPage,
+        orden, setOrden, filtersOpen, setFiltersOpen, activeFiltersCount, clearFilters,
         openDetail, closeDetail,
     };
 };
@@ -63,12 +83,13 @@ export const localEffects = (ls) => {
             f.catalogo.getFiguras({
                 q: ls.q || undefined,
                 etiquetas: ls.selectedTags.length ? ls.selectedTags.join(',') : undefined,
+                orden: ls.orden || undefined,
                 page: ls.page,
                 limit: 24,
             });
         }, 300);
         return () => clearTimeout(t);
-    }, [ls.q, ls.selectedTags, ls.page]);
+    }, [ls.q, ls.selectedTags, ls.orden, ls.page]);
 
     useEffect(() => {
         if (ls.id) {

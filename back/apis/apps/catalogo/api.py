@@ -2,6 +2,15 @@ from core.bases.apis import BaseApi, NoSession, pln
 
 
 class GetFiguras(NoSession, BaseApi):
+    ORDEN_MAP = {
+        "nombre_asc": "f.nombre ASC",
+        "nombre_desc": "f.nombre DESC",
+        "fecha_desc": "f.created_at DESC",
+        "fecha_asc": "f.created_at ASC",
+        "tags_desc": "num_etiquetas DESC, f.nombre ASC",
+        "media_desc": "num_media DESC, f.nombre ASC",
+    }
+
     def main(self):
         self.show_me()
         self.get_filtros()
@@ -22,6 +31,8 @@ class GetFiguras(NoSession, BaseApi):
         try: page = int(page)
         except Exception: page = 1
         offset = (page - 1) * limit
+
+        orden_sql = self.ORDEN_MAP.get(self.data.get("orden"), self.ORDEN_MAP["nombre_asc"])
 
         query = f"""
         SELECT f.id, f.nombre, f.descripcion, f.created_at,
@@ -48,12 +59,14 @@ class GetFiguras(NoSession, BaseApi):
                     ORDER BY cantidad DESC
                     LIMIT 5
                 ) r
-            ) as reacciones_top
+            ) as reacciones_top,
+            (SELECT COUNT(*) FROM figura_etiquetas fe3 WHERE fe3.figura_id = f.id) as num_etiquetas,
+            (SELECT COUNT(*) FROM figura_archivos fa3 WHERE fa3.figura_id = f.id) as num_media
         FROM figuras f
         {self.joins}
         WHERE f.estatus = 'publico' {self.filtros}
         GROUP BY f.id
-        ORDER BY f.nombre ASC
+        ORDER BY {orden_sql}
         LIMIT :limit OFFSET :offset
         """
         query_data = {**self.query_data, "limit": limit, "offset": offset}

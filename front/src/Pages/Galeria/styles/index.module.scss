@@ -66,6 +66,77 @@
     &::-webkit-scrollbar { display: none; }
 }
 
+/* ---------- Filters sheet ---------- */
+.filtersBody {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-5);
+}
+
+.filterSection {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+}
+
+.filterSectionTitle {
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+}
+
+.sortList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+}
+
+.sortOption {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.7rem 0.9rem;
+    border-radius: var(--r-md);
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    color: var(--text);
+    font-size: var(--fs-sm);
+    cursor: pointer;
+    transition: background var(--t-fast), border-color var(--t-fast);
+
+    &:hover { background: var(--surface-2); }
+
+    &.sortOptionActive {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+        color: var(--accent-hover);
+        font-weight: var(--fw-semibold);
+    }
+}
+
+.filterTagsWrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+}
+
+.clearFiltersBtn {
+    align-self: flex-start;
+    padding: 0.55rem 1rem;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    border-radius: var(--r-md);
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-soft);
+    cursor: pointer;
+    transition: background var(--t-fast), color var(--t-fast);
+
+    &:hover { background: var(--surface-2); color: var(--text); }
+}
+
 /* ---------- Grid ---------- */
 .grid {
     display: grid;
