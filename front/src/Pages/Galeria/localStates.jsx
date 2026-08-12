@@ -21,7 +21,7 @@ export const localStates = () => {
     const [q, setQ] = createState(['galeria', 'q'], '');
     const [selectedTags, setSelectedTags] = createState(['galeria', 'selectedTags'], []);
     const [page, setPage] = createState(['galeria', 'page'], 1);
-    const [orden, setOrdenRaw] = createState(['galeria', 'orden'], 'nombre_asc');
+    const [orden, setOrdenRaw] = createState(['galeria', 'orden'], 'fecha_desc');
 
     // El sheet de filtros se abre/cierra con el router (?filtros=1), no con un
     // booleano suelto: asi el boton "atras" del navegador tambien lo cierra.
@@ -64,12 +64,12 @@ export const localStates = () => {
     const clearFilters = useCallback(() => {
         setQ('');
         setSelectedTags([]);
-        setOrdenRaw('nombre_asc');
+        setOrdenRaw('fecha_desc');
         setPage(1);
     }, []);
 
     const activeFiltersCount = useMemo(
-        () => selectedTags.length + (orden !== 'nombre_asc' ? 1 : 0) + (q ? 1 : 0),
+        () => selectedTags.length + (orden !== 'fecha_desc' ? 1 : 0) + (q ? 1 : 0),
         [selectedTags, orden, q]
     );
 

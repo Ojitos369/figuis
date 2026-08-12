@@ -2,10 +2,10 @@ import { SheetModal } from '../../../Components/SheetModal';
 import { Tag } from '../../../Components/Tag';
 
 const ORDEN_OPTS = [
-    { value: 'nombre_asc', label: 'Nombre (A-Z)' },
-    { value: 'nombre_desc', label: 'Nombre (Z-A)' },
     { value: 'fecha_desc', label: 'Más recientes' },
     { value: 'fecha_asc', label: 'Más antiguos' },
+    { value: 'nombre_asc', label: 'Nombre (A-Z)' },
+    { value: 'nombre_desc', label: 'Nombre (Z-A)' },
     { value: 'tags_desc', label: 'Más etiquetas' },
     { value: 'media_desc', label: 'Más contenido' },
 ];

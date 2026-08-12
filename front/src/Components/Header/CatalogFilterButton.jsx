@@ -14,9 +14,9 @@ export const CatalogFilterButton = ({ style }) => {
     const isCatalogo = useMemo(() => s.page?.title === 'Catálogo', [s.page?.title]);
     const filtersOpen = searchParams.get('filtros') === '1';
     const selectedTags = useMemo(() => s.galeria?.selectedTags || [], [s.galeria?.selectedTags]);
-    const orden = useMemo(() => s.galeria?.orden || 'nombre_asc', [s.galeria?.orden]);
+    const orden = useMemo(() => s.galeria?.orden || 'fecha_desc', [s.galeria?.orden]);
     const q = useMemo(() => s.galeria?.q || '', [s.galeria?.q]);
-    const activeCount = selectedTags.length + (orden !== 'nombre_asc' ? 1 : 0) + (q ? 1 : 0);
+    const activeCount = selectedTags.length + (orden !== 'fecha_desc' ? 1 : 0) + (q ? 1 : 0);
 
     if (!isCatalogo) return null;
 
