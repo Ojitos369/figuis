@@ -18,6 +18,18 @@
     justify-content: space-between;
 }
 
+.rangeBadge {
+    padding: 3px 10px;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    color: var(--text-muted);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
 .title {
     font-size: var(--fs-xl);
     font-weight: var(--fw-bold);
