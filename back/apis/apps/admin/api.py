@@ -1,8 +1,24 @@
 import os
 import json
+import struct
 
 from core.bases.apis import AdminApi, pln
 from core.conf.settings import MEDIA_DIR
+
+
+def stl_esta_completo(contents: bytes) -> bool:
+    """Valida que un .stl no venga truncado (subida cortada a medias).
+    Binario: el header declara cuantos triangulos trae; si el tamano del
+    archivo no cuadra con esa cuenta, faltan datos. ASCII: debe cerrar con
+    'endsolid' (muchos exportadores de binario tambien meten 'solid...' como
+    comentario en el header de 80 bytes, por eso se valida primero como binario)."""
+    if len(contents) < 84:
+        return False
+    n = struct.unpack('<I', contents[80:84])[0]
+    if 84 + n * 50 == len(contents):
+        return True
+    tail = contents[-200:].strip().lower()
+    return contents[:5].lower() == b'solid' and b'endsolid' in tail
 
 
 class GetFigurasAdmin(AdminApi):
@@ -207,6 +223,10 @@ class SaveFiguraArchivo(AdminApi):
         filename = f"{id_archivo}{ext}"
         file_path = os.path.join(folder_path, filename)
         contents = file.file.read()
+
+        if tipo == "modelo_3d" and ext == ".stl" and not stl_esta_completo(contents):
+            raise self.MYE("El archivo .stl parece venir incompleto (subida cortada). Vuelve a intentar la subida.")
+
         with open(file_path, 'wb') as f:
             f.write(contents)
 
