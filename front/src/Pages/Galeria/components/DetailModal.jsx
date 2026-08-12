@@ -1,4 +1,4 @@
-import { useEffect, useState, lazy, Suspense } from 'react';
+import { useEffect, useState, useRef, useCallback, lazy, Suspense } from 'react';
 import { useStates } from '../../../Hooks/useStates';
 import { SheetModal } from '../../../Components/SheetModal';
 import { Tag } from '../../../Components/Tag';
@@ -8,6 +8,8 @@ import { MediaViewer } from '../../../Components/MediaViewer';
 import { ReactionBar } from '../../../Components/ReactionBar';
 import { ErrorBoundary } from '../../../Components/ErrorBoundary';
 import { mediaUrl } from '../../../constants/api';
+
+const SWIPE_THRESHOLD = 40;
 
 // three.js + fiber/drei pesan bastante: solo se descargan si el usuario
 // realmente activa la previsualizacion 3D.
@@ -24,8 +26,42 @@ export const DetailModal = ({ ls }) => {
     const data = open && figuraActual ? figuraActual : null;
     const gallery = data ? [...(data.resultado || []), ...(data.relacionados || [])] : [];
     const modelo3d = data?.modelos_3d?.[0];
+    const canNav = !show3D && gallery.length > 1;
 
     useEffect(() => { setActiveIdx(0); setShow3D(false); }, [id]);
+
+    const goPrev = useCallback(() => {
+        setActiveIdx(i => (i - 1 + gallery.length) % gallery.length);
+    }, [gallery.length]);
+    const goNext = useCallback(() => {
+        setActiveIdx(i => (i + 1) % gallery.length);
+    }, [gallery.length]);
+
+    // Flechas del teclado, solo mientras se ve la galeria de fotos (no en 3D,
+    // donde arrastrar es rotar el modelo).
+    useEffect(() => {
+        if (!open || !canNav) return;
+        const onKey = (e) => {
+            if (e.key === 'ArrowLeft') goPrev();
+            else if (e.key === 'ArrowRight') goNext();
+        };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [open, canNav, goPrev, goNext]);
+
+    // Deslizar con dedo/mouse sobre el visor principal.
+    const swipeRef = useRef({ startX: 0, dragging: false });
+    const onSwipeStart = (e) => {
+        if (!canNav) return;
+        swipeRef.current = { startX: e.clientX, dragging: true };
+    };
+    const onSwipeEnd = (e) => {
+        if (!canNav || !swipeRef.current.dragging) return;
+        swipeRef.current.dragging = false;
+        const dx = e.clientX - swipeRef.current.startX;
+        if (Math.abs(dx) < SWIPE_THRESHOLD) return;
+        if (dx > 0) goPrev(); else goNext();
+    };
 
     const share = () => {
         const url = `${window.location.origin}${window.location.pathname}#/figura/${id}`;
@@ -60,8 +96,20 @@ export const DetailModal = ({ ls }) => {
                         </div>
                     ) : !!gallery.length && (
                         <>
-                            <div className={style.mainViewer}>
+                            <div
+                                className={style.mainViewer}
+                                onPointerDown={onSwipeStart}
+                                onPointerUp={onSwipeEnd}
+                                onPointerCancel={() => { swipeRef.current.dragging = false; }}
+                            >
                                 <MediaViewer url={gallery[activeIdx]?.archivo_url} alt={data.nombre} />
+                                {canNav && (
+                                    <>
+                                        <button type="button" className={`${style.navBtn} ${style.navBtnPrev}`} onClick={goPrev} aria-label="Anterior">‹</button>
+                                        <button type="button" className={`${style.navBtn} ${style.navBtnNext}`} onClick={goNext} aria-label="Siguiente">›</button>
+                                        <span className={style.navCounter}>{activeIdx + 1} / {gallery.length}</span>
+                                    </>
+                                )}
                             </div>
                             {gallery.length > 1 && (
                                 <div className={style.thumbStrip}>
