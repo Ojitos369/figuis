@@ -16,7 +16,7 @@ export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
     const [currentId, setCurrentId] = useState(figuraId || null);
     const [form, setForm] = useState(emptyForm);
     const [archivos, setArchivos] = useState(emptyArchivos);
-    const [uploading, setUploading] = useState(false);
+    const [uploads, setUploads] = useState({ resultado: [], relacionado: [], modelo_3d: [] });
 
     useEffect(() => {
         if (!open) return;
@@ -66,18 +66,32 @@ export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
 
     const handleFiles = (fileList, tipo) => {
         if (!currentId || !fileList?.length) return;
-        setUploading(true);
         const files = Array.from(fileList);
-        let pending = files.length;
-        files.forEach(file => {
-            f.admin.saveFiguraArchivo({ figura_id: currentId, tipo, file }, (res) => {
-                if (res) {
-                    const nuevo = { id: res.id, archivo_url: res.url, tipo: res.tipo };
-                    setArchivos(prev => ({ ...prev, [tipo]: [...prev[tipo], nuevo] }));
+        const entries = files.map(file => ({
+            tempId: `${Date.now()}_${Math.random().toString(16).slice(2)}`,
+            name: file.name,
+            progress: 0,
+        }));
+        setUploads(prev => ({ ...prev, [tipo]: [...prev[tipo], ...entries] }));
+
+        files.forEach((file, i) => {
+            const { tempId } = entries[i];
+            f.admin.saveFiguraArchivo(
+                { figura_id: currentId, tipo, file },
+                (res) => {
+                    setUploads(prev => ({ ...prev, [tipo]: prev[tipo].filter(u => u.tempId !== tempId) }));
+                    if (res) {
+                        const nuevo = { id: res.id, archivo_url: res.url, tipo: res.tipo };
+                        setArchivos(prev => ({ ...prev, [tipo]: [...prev[tipo], nuevo] }));
+                    }
+                },
+                (progress) => {
+                    setUploads(prev => ({
+                        ...prev,
+                        [tipo]: prev[tipo].map(u => u.tempId === tempId ? { ...u, progress } : u),
+                    }));
                 }
-                pending -= 1;
-                if (pending <= 0) setUploading(false);
-            });
+            );
         });
     };
 
@@ -149,7 +163,7 @@ export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
                             label="Resultado (portada)"
                             hint="La figura terminada. La primera imagen es la portada del catálogo."
                             items={archivos.resultado}
-                            uploading={uploading}
+                            uploads={uploads.resultado}
                             onFiles={(files) => handleFiles(files, 'resultado')}
                             onDelete={(a) => handleDeleteArchivo(a, 'resultado')}
                         />
@@ -158,7 +172,7 @@ export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
                             label="Archivos relacionados"
                             hint="Fotos de referencia usadas para generar la figura."
                             items={archivos.relacionado}
-                            uploading={uploading}
+                            uploads={uploads.relacionado}
                             onFiles={(files) => handleFiles(files, 'relacionado')}
                             onDelete={(a) => handleDeleteArchivo(a, 'relacionado')}
                         />
@@ -167,7 +181,7 @@ export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
                             label="Modelo 3D"
                             hint="Archivo .stl imprimible, con previsualización interactiva."
                             items={archivos.modelo_3d}
-                            uploading={uploading}
+                            uploads={uploads.modelo_3d}
                             onFiles={(files) => handleFiles(files, 'modelo_3d')}
                             onDelete={(a) => handleDeleteArchivo(a, 'modelo_3d')}
                         />

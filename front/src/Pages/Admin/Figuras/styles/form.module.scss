@@ -195,6 +195,53 @@
     }
 }
 
+.mediaItemIn {
+    animation: mediaPopIn var(--t-slow);
+}
+
+@keyframes mediaPopIn {
+    from { opacity: 0; transform: scale(0.85); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.mediaUploading {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+}
+
+.progressRing {
+    --progress: 0%;
+    position: relative;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: conic-gradient(var(--accent) var(--progress), var(--surface-3) 0);
+    transition: background 0.15s linear;
+
+    &::before {
+        content: '';
+        position: absolute;
+        inset: 4px;
+        border-radius: 50%;
+        background: var(--surface-2);
+    }
+}
+
+.progressPct {
+    position: relative;
+    font-size: 0.6rem;
+    font-weight: var(--fw-semibold);
+    color: var(--text-soft);
+}
+
 .mediaRemove {
     position: absolute;
     top: 4px;
@@ -267,6 +314,30 @@
     white-space: nowrap;
     font-size: var(--fs-sm);
     color: var(--text);
+}
+
+.modelProgressBar {
+    flex-shrink: 0;
+    width: 60px;
+    height: 5px;
+    border-radius: var(--r-pill);
+    background: var(--surface-3);
+    overflow: hidden;
+}
+
+.modelProgressFill {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.15s linear;
+}
+
+.modelProgressPct {
+    flex-shrink: 0;
+    width: 32px;
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    text-align: right;
 }
 
 .modelPreviewBtn {

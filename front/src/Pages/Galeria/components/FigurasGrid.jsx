@@ -1,11 +1,19 @@
 import { FigCard } from './FigCard';
-import { Loader } from '../../../Components/Loader';
+import { FigCardSkeleton } from './FigCardSkeleton';
+
+const SKELETON_COUNT = 8;
 
 export const FigurasGrid = ({ ls }) => {
     const { style, figuras, loading, openDetail } = ls;
 
     if (loading && !figuras.length) {
-        return <div className={style.loaderWrap}><Loader label="Cargando figuras..." /></div>;
+        return (
+            <div className={style.grid}>
+                {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
+                    <FigCardSkeleton key={i} style={style} />
+                ))}
+            </div>
+        );
     }
 
     if (!loading && figuras.length === 0) {
@@ -19,8 +27,8 @@ export const FigurasGrid = ({ ls }) => {
 
     return (
         <div className={style.grid}>
-            {figuras.map(f => (
-                <FigCard key={f.id} figura={f} style={style} onOpen={openDetail} />
+            {figuras.map((f, i) => (
+                <FigCard key={f.id} figura={f} style={style} onOpen={openDetail} enterDelay={Math.min(i, 11) * 30} />
             ))}
         </div>
     );

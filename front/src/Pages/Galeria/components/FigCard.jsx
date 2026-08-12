@@ -2,9 +2,14 @@ import { Tag } from '../../../Components/Tag';
 import { MediaThumb } from '../../../Components/MediaThumb';
 import { ReactionSummary } from '../../../Components/ReactionSummary';
 
-export const FigCard = ({ figura, style, onOpen }) => {
+export const FigCard = ({ figura, style, onOpen, enterDelay = 0 }) => {
     return (
-        <button type="button" className={style.figCard} onClick={() => onOpen(figura.id)}>
+        <button
+            type="button"
+            className={`${style.figCard} ${style.figCardIn}`}
+            style={{ animationDelay: `${enterDelay}ms` }}
+            onClick={() => onOpen(figura.id)}
+        >
             <div className={style.figThumb}>
                 {figura.portada
                     ? <MediaThumb url={figura.portada} alt={figura.nombre} />

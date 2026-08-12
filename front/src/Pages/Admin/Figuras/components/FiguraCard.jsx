@@ -1,9 +1,13 @@
 import { Tag } from '../../../../Components/Tag';
 import { MediaThumb } from '../../../../Components/MediaThumb';
 
-export const FiguraCard = ({ figura, style, onEdit, onDelete }) => {
+export const FiguraCard = ({ figura, style, onEdit, onDelete, enterDelay = 0 }) => {
     return (
-        <div className={style.figuraCard} onClick={() => onEdit(figura)}>
+        <div
+            className={`${style.figuraCard} ${style.figuraCardIn}`}
+            style={{ animationDelay: `${enterDelay}ms` }}
+            onClick={() => onEdit(figura)}
+        >
             <div className={style.thumb}>
                 {figura.portada
                     ? <MediaThumb url={figura.portada} alt={figura.nombre} />

@@ -6,6 +6,7 @@ import { Loader } from '../../../Components/Loader';
 import { MediaThumb } from '../../../Components/MediaThumb';
 import { MediaViewer } from '../../../Components/MediaViewer';
 import { ReactionBar } from '../../../Components/ReactionBar';
+import { ErrorBoundary } from '../../../Components/ErrorBoundary';
 import { mediaUrl } from '../../../constants/api';
 
 // three.js + fiber/drei pesan bastante: solo se descargan si el usuario
@@ -51,9 +52,11 @@ export const DetailModal = ({ ls }) => {
                 <div className={style.detailBody}>
                     {show3D && modelo3d ? (
                         <div className={style.mainViewer}>
-                            <Suspense fallback={<div className={style.detailLoader}><Loader label="Cargando visor 3D..." /></div>}>
-                                <STLViewer url={mediaUrl(modelo3d.archivo_url)} />
-                            </Suspense>
+                            <ErrorBoundary fallback={<div className={style.detailLoader}>⚠️ No se pudo cargar el visor 3D.</div>}>
+                                <Suspense fallback={<div className={style.detailLoader}><Loader label="Cargando visor 3D..." /></div>}>
+                                    <STLViewer url={mediaUrl(modelo3d.archivo_url)} />
+                                </Suspense>
+                            </ErrorBoundary>
                         </div>
                     ) : !!gallery.length && (
                         <>

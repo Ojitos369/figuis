@@ -5,7 +5,7 @@ import style from '../styles/form.module.scss';
 const ACCEPT = 'image/*,video/*,audio/*';
 
 // Zona de medios: click para elegir (multi-seleccion) o arrastrar y soltar archivos.
-export const MediaDropzone = ({ label, hint, items, onFiles, onDelete, uploading }) => {
+export const MediaDropzone = ({ label, hint, items, uploads = [], onFiles, onDelete }) => {
     const inputRef = useRef(null);
     const [dragging, setDragging] = useState(false);
     const dragDepth = useRef(0);
@@ -48,12 +48,22 @@ export const MediaDropzone = ({ label, hint, items, onFiles, onDelete, uploading
             >
                 <div className={style.mediaGrid}>
                     {items.map(a => (
-                        <div key={a.id} className={style.mediaItem}>
+                        <div key={a.id} className={`${style.mediaItem} ${style.mediaItemIn}`}>
                             <MediaThumb url={a.archivo_url} />
                             <button type="button" className={style.mediaRemove} onClick={() => onDelete(a)}>✕</button>
                         </div>
                     ))}
-                    <button type="button" className={style.mediaAdd} onClick={openPicker} disabled={uploading}>
+                    {uploads.map(u => (
+                        <div key={u.tempId} className={style.mediaUploading} title={u.name}>
+                            <span
+                                className={style.progressRing}
+                                style={{ '--progress': `${u.progress}%` }}
+                            >
+                                <span className={style.progressPct}>{u.progress}%</span>
+                            </span>
+                        </div>
+                    ))}
+                    <button type="button" className={style.mediaAdd} onClick={openPicker}>
                         <span>+</span> Agregar
                     </button>
                     <input

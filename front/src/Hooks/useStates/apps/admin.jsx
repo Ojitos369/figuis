@@ -55,12 +55,17 @@ export const admin = props => {
             .catch(err => notifyError(err, "No se pudo eliminar la figura"));
     };
 
-    const saveFiguraArchivo = ({ figura_id, tipo, file }, onDone) => {
+    const saveFiguraArchivo = ({ figura_id, tipo, file }, onDone, onProgress) => {
         const form = new FormData();
         form.append("figura_id", figura_id);
         form.append("tipo", tipo);
         form.append("file", file);
-        miAxios.post("admin/save_figura_archivo", form, { headers: { "Content-Type": "multipart/form-data" } })
+        miAxios.post("admin/save_figura_archivo", form, {
+            headers: { "Content-Type": "multipart/form-data" },
+            onUploadProgress: (evt) => {
+                if (onProgress && evt.total) onProgress(Math.round((evt.loaded / evt.total) * 100));
+            },
+        })
             .then(res => { if (onDone) onDone(res.data); })
             .catch(err => {
                 notifyError(err, "No se pudo subir el archivo");

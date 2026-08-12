@@ -1,5 +1,6 @@
 import { useRef, useState, lazy, Suspense } from 'react';
 import { mediaUrl } from '../../../../constants/api';
+import { ErrorBoundary } from '../../../../Components/ErrorBoundary';
 import style from '../styles/form.module.scss';
 
 const STLViewer = lazy(() => import('../../../../Components/STLViewer').then(m => ({ default: m.STLViewer })));
@@ -14,7 +15,7 @@ const labelFromUrl = (url) => {
 
 // Igual que MediaDropzone (click o drag&drop, multi-seleccion) pero para .stl,
 // con un boton para previsualizar el modelo en 3D antes de guardarlo definitivo.
-export const Model3DDropzone = ({ label, hint, items, onFiles, onDelete, uploading }) => {
+export const Model3DDropzone = ({ label, hint, items, uploads = [], onFiles, onDelete }) => {
     const inputRef = useRef(null);
     const [dragging, setDragging] = useState(false);
     const dragDepth = useRef(0);
@@ -67,7 +68,17 @@ export const Model3DDropzone = ({ label, hint, items, onFiles, onDelete, uploadi
                             <button type="button" className={style.modelRemove} onClick={() => onDelete(a)}>✕</button>
                         </div>
                     ))}
-                    <button type="button" className={style.modelAddBtn} onClick={openPicker} disabled={uploading}>
+                    {uploads.map(u => (
+                        <div key={u.tempId} className={style.modelItem}>
+                            <span className={style.modelIcon}>🧊</span>
+                            <span className={style.modelName}>{u.name}</span>
+                            <div className={style.modelProgressBar}>
+                                <span className={style.modelProgressFill} style={{ width: `${u.progress}%` }} />
+                            </div>
+                            <span className={style.modelProgressPct}>{u.progress}%</span>
+                        </div>
+                    ))}
+                    <button type="button" className={style.modelAddBtn} onClick={openPicker}>
                         <span>+</span> Subir .stl
                     </button>
                     <input
@@ -86,9 +97,11 @@ export const Model3DDropzone = ({ label, hint, items, onFiles, onDelete, uploadi
                 <div className={style.model3dOverlay} onClick={() => setPreviewUrl(null)}>
                     <div className={style.model3dBox} onClick={e => e.stopPropagation()}>
                         <button type="button" className={style.model3dClose} onClick={() => setPreviewUrl(null)}>✕</button>
-                        <Suspense fallback={<div className={style.modelPreviewLoading}>Cargando visor 3D...</div>}>
-                            <STLViewer url={mediaUrl(previewUrl)} />
-                        </Suspense>
+                        <ErrorBoundary fallback={<div className={style.modelPreviewLoading}>⚠️ No se pudo cargar el visor 3D.</div>}>
+                            <Suspense fallback={<div className={style.modelPreviewLoading}>Cargando visor 3D...</div>}>
+                                <STLViewer url={mediaUrl(previewUrl)} />
+                            </Suspense>
+                        </ErrorBoundary>
                     </div>
                 </div>
             )}
