@@ -499,8 +499,14 @@
     white-space: pre-wrap;
 }
 
-.shareBtn, .view3dBtn {
+.actionsRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
     align-self: flex-start;
+}
+
+.shareBtn, .view3dBtn {
     padding: 0.6rem 1.1rem;
     font-size: var(--fs-sm);
     font-weight: var(--fw-semibold);
@@ -515,6 +521,7 @@
 }
 
 .view3dBtn {
+    align-self: flex-start;
     border-color: var(--accent);
     color: var(--accent-hover);
     background: var(--accent-soft);

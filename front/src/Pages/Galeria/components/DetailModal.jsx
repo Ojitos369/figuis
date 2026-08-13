@@ -96,6 +96,13 @@ export const DetailModal = ({ ls }) => {
         });
     };
 
+    const copyCodigo = () => {
+        if (!data?.codigo) return;
+        navigator.clipboard?.writeText(data.codigo).then(() => {
+            f.general.notificacion({ title: 'Listo', message: 'Código copiado al portapapeles', mode: 'success' });
+        });
+    };
+
     const downloadMultiple = () => {
         if (downloadingMultiple) return;
         setDownloadMenuOpen(false);
@@ -232,9 +239,16 @@ export const DetailModal = ({ ls }) => {
 
                     <ReactionBar figuraId={data.id} reacciones={data.reacciones} misReacciones={data.mis_reacciones} />
 
-                    <button type="button" className={style.shareBtn} onClick={share}>
-                        🔗 Compartir
-                    </button>
+                    <div className={style.actionsRow}>
+                        <button type="button" className={style.shareBtn} onClick={share}>
+                            🔗 Compartir
+                        </button>
+                        {!!data.codigo && (
+                            <button type="button" className={style.shareBtn} onClick={copyCodigo}>
+                                📋 Copiar código
+                            </button>
+                        )}
+                    </div>
 
                     {!!data.codigo && (
                         <div className={style.detailCodigo}>Código: #{data.codigo}</div>
