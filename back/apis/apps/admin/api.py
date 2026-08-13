@@ -6,6 +6,23 @@ import struct
 from core.bases.apis import AdminApi, pln
 from core.bases.utils import CODIGO_EXPR
 from core.conf.settings import MEDIA_DIR
+from core.social_preview import generate_social_preview, remove_social_preview
+
+
+def refresh_social_preview(conexion, figura_id: str) -> None:
+    portada = conexion.consulta_asociativa(
+        """
+        SELECT archivo_url FROM figura_archivos
+        WHERE figura_id = :figura_id AND tipo = 'resultado'
+          AND archivo_url ~* '\\.(jpe?g|png|webp|gif|bmp|tiff?)$'
+        ORDER BY orden ASC, created_at ASC LIMIT 1
+        """,
+        {"figura_id": figura_id},
+    )
+    if portada.empty:
+        remove_social_preview(figura_id)
+        return
+    generate_social_preview(figura_id, portada.iloc[0]["archivo_url"], force=True)
 
 
 def stl_esta_completo(contents: bytes) -> bool:
@@ -258,6 +275,7 @@ class DeleteFigura(AdminApi):
             file_path = os.path.join(MEDIA_DIR, row["archivo_url"])
             if os.path.exists(file_path):
                 os.remove(file_path)
+        remove_social_preview(id)
 
         if not self.conexion.ejecutar("DELETE FROM figuras WHERE id = :id", {"id": id}):
             self.conexion.rollback()
@@ -301,7 +319,14 @@ class SaveFiguraArchivo(AdminApi):
             "INSERT INTO figura_archivos (id, figura_id, archivo_url, tipo) VALUES (:id, :figura_id, :archivo_url, :tipo)",
             {"id": id_archivo, "figura_id": figura_id, "archivo_url": archivo_url, "tipo": tipo}
         )
+        if tipo == "resultado":
+            self.conexion.ejecutar(
+                "UPDATE figuras SET updated_at = NOW() WHERE id = :id",
+                {"id": figura_id},
+            )
         self.conexion.commit()
+        if tipo == "resultado":
+            refresh_social_preview(self.conexion, figura_id)
         self.response = {"id": id_archivo, "url": archivo_url, "tipo": tipo}
 
 
@@ -310,15 +335,29 @@ class DeleteFiguraArchivo(AdminApi):
         self.show_me()
         id_archivo = self.data.get("id")
 
-        res = self.conexion.consulta_asociativa("SELECT archivo_url FROM figura_archivos WHERE id = :id", {"id": id_archivo})
+        res = self.conexion.consulta_asociativa(
+            "SELECT figura_id, archivo_url, tipo FROM figura_archivos WHERE id = :id",
+            {"id": id_archivo},
+        )
+        figura_id = None
+        tipo = None
         if not res.empty:
+            figura_id = str(res.iloc[0]["figura_id"])
             archivo_url = res.iloc[0]["archivo_url"]
+            tipo = res.iloc[0]["tipo"]
             file_path = os.path.join(MEDIA_DIR, archivo_url)
             if os.path.exists(file_path):
                 os.remove(file_path)
 
         self.conexion.ejecutar("DELETE FROM figura_archivos WHERE id = :id", {"id": id_archivo})
+        if figura_id and tipo == "resultado":
+            self.conexion.ejecutar(
+                "UPDATE figuras SET updated_at = NOW() WHERE id = :id",
+                {"id": figura_id},
+            )
         self.conexion.commit()
+        if figura_id and tipo == "resultado":
+            refresh_social_preview(self.conexion, figura_id)
         self.response = {"id": id_archivo}
 
 

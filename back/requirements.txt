@@ -20,6 +20,7 @@ numpy==2.3.5
 ojitos369==1.1
 ojitos369_postgres_db==2.1.4
 packaging==26.2
+pillow==12.3.0
 pandas==2.3.3
 passlib==1.7.4
 psycopg2-binary==2.9.11

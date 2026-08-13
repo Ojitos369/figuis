@@ -105,7 +105,8 @@ export const DetailModal = ({ ls }) => {
     };
 
     const getShareData = () => {
-        const url = `${window.location.origin}/figura/${id}`;
+        const version = data?.updated_at ? `?v=${encodeURIComponent(data.updated_at)}` : '';
+        const url = `${window.location.origin}/figura/${id}${version}`;
         const text = `${data?.nombre || ''}\nCodigo: ${data?.codigo || ''}\n${url}`;
         return { text, url };
     };

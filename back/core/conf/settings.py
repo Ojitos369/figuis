@@ -8,6 +8,7 @@ setproctitle.setproctitle('figuis-py')
 # ----------------------   BASE   ----------------------
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 MEDIA_DIR = os.path.join(BASE_DIR, 'media')
+PUBLIC_BASE_URL = os.environ.get('PUBLIC_BASE_URL', '').rstrip('/')
 prod_mode = True if str(os.environ.get('RUN_PROD_MODE', True)).title() == 'True' else False
 dev_mode = True if str(os.environ.get('RUN_DEV_MODE', False)).title() == 'True' else False
 

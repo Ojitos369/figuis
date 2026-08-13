@@ -18,4 +18,7 @@ async def gm(request: Request, ruta: str):
         if os.path.exists(P404_PATH):
             return HTMLResponse(content=open(P404_PATH).read(), status_code=404)
         raise HTTPException(status_code=404, detail="File not found")
-    return FileResponse(file)
+    headers = {}
+    if os.path.basename(file) == "social-preview.jpg":
+        headers["Cache-Control"] = "public, max-age=31536000"
+    return FileResponse(file, headers=headers)
