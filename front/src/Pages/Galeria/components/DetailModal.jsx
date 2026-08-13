@@ -8,6 +8,9 @@ import { MediaViewer } from '../../../Components/MediaViewer';
 import { ReactionBar } from '../../../Components/ReactionBar';
 import { ErrorBoundary } from '../../../Components/ErrorBoundary';
 import { LINK_API_PORT, mediaUrl } from '../../../constants/api';
+import facebookIcon from '../../../assets/social/facebook.svg';
+import instagramIcon from '../../../assets/social/instagram.svg';
+import whatsappIcon from '../../../assets/social/whatsapp.svg';
 
 const SWIPE_THRESHOLD = 40;
 
@@ -20,6 +23,10 @@ const DownloadIcon = ({ all = false }) => (
         <path d="M12 3v11m0 0 4-4m-4 4-4-4M5 18v2h14v-2" />
         {all && <path d="M4 6h16" />}
     </svg>
+);
+
+const SocialIcon = ({ src }) => (
+    <img className="socialLogo" src={src} alt="" aria-hidden="true" />
 );
 
 const fileNameFromPath = (path, fallback) => {
@@ -52,6 +59,17 @@ export const DetailModal = ({ ls }) => {
         setShareMenuOpen(false);
         setDownloadingMultiple(false);
     }, [id]);
+
+    useEffect(() => {
+        if (!shareMenuOpen) return;
+        const closeOnEscape = (event) => {
+            if (event.key !== 'Escape') return;
+            event.stopImmediatePropagation();
+            setShareMenuOpen(false);
+        };
+        document.addEventListener('keydown', closeOnEscape);
+        return () => document.removeEventListener('keydown', closeOnEscape);
+    }, [shareMenuOpen]);
 
     const goPrev = useCallback(() => {
         setActiveIdx(i => (i - 1 + gallery.length) % gallery.length);
@@ -293,33 +311,53 @@ export const DetailModal = ({ ls }) => {
                                 🔗 Compartir
                             </button>
                             {shareMenuOpen && (
-                                <div className={style.shareMenu}>
-                                    <button type="button" onClick={copyShareText}>
-                                        <span className={`${style.socialLogo} ${style.copyLogo}`} aria-hidden="true">📋</span>
-                                        Copiar texto
-                                    </button>
-                                    <button type="button" onClick={() => {
-                                        const { text } = getShareData();
-                                        openShareUrl(`https://wa.me/?text=${encodeURIComponent(text)}`);
-                                    }}>
-                                        <span className={`${style.socialLogo} ${style.whatsappLogo}`} aria-hidden="true">WA</span>
-                                        WhatsApp
-                                    </button>
-                                    <button type="button" onClick={() => {
-                                        const { url, text } = getShareData();
-                                        openShareUrl(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(text)}`);
-                                    }}>
-                                        <span className={`${style.socialLogo} ${style.facebookLogo}`} aria-hidden="true">f</span>
-                                        Facebook
-                                    </button>
-                                    <button type="button" onClick={() => shareNative('https://www.instagram.com/')}>
-                                        <span className={`${style.socialLogo} ${style.instagramLogo}`} aria-hidden="true">◎</span>
-                                        Instagram
-                                    </button>
-                                    <button type="button" onClick={() => shareNative('https://www.instagram.com/stories/')}>
-                                        <span className={`${style.socialLogo} ${style.storiesLogo}`} aria-hidden="true">✦</span>
-                                        Historias
-                                    </button>
+                                <div className={style.shareOverlay} onClick={() => setShareMenuOpen(false)}>
+                                    <div className={style.shareSheet} role="dialog" aria-modal="true" aria-label="Compartir" onClick={event => event.stopPropagation()}>
+                                        <div className={style.shareGrabber} />
+                                        <div className={style.shareSheetHeader}>
+                                            <h2>Compartir</h2>
+                                            <button type="button" onClick={() => setShareMenuOpen(false)} aria-label="Cerrar">✕</button>
+                                        </div>
+                                        <div className={style.shareMenu}>
+                                            <button type="button" onClick={copyShareText}>
+                                                <span className={`${style.socialLogo} ${style.copyLogo}`} aria-hidden="true">📋</span>
+                                                Copiar texto
+                                            </button>
+                                            <button type="button" onClick={() => {
+                                                const { text } = getShareData();
+                                                openShareUrl(`https://wa.me/?text=${encodeURIComponent(text)}`);
+                                            }}>
+                                                <SocialIcon src={whatsappIcon} />
+                                                WhatsApp
+                                            </button>
+                                            <button type="button" onClick={() => {
+                                                const { url, text } = getShareData();
+                                                openShareUrl(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(text)}`);
+                                            }}>
+                                                <SocialIcon src={facebookIcon} />
+                                                Facebook
+                                            </button>
+                                            <button type="button" onClick={() => shareNative('https://www.instagram.com/')}>
+                                                <SocialIcon src={instagramIcon} />
+                                                Instagram
+                                            </button>
+                                            <button type="button" onClick={() => {
+                                                const { text } = getShareData();
+                                                openShareUrl(`whatsapp://send?text=${encodeURIComponent(text)}`);
+                                            }}>
+                                                <SocialIcon src={whatsappIcon} />
+                                                Historia de WhatsApp
+                                            </button>
+                                            <button type="button" onClick={() => shareNative('https://www.facebook.com/')}>
+                                                <SocialIcon src={facebookIcon} />
+                                                Historia de Facebook
+                                            </button>
+                                            <button type="button" onClick={() => shareNative('https://www.instagram.com/')}>
+                                                <SocialIcon src={instagramIcon} />
+                                                Historia de Instagram
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                         </div>
