@@ -1,0 +1,3 @@
+Cuando se entre a una para ver el detalle y se cambie de pagina tambien se debe de cambiar el titulo al del conjunto.
+Crea un nuevo campo para los album que sea un codigo de 6 digitos tomados de su id, para que tambien acepte busqueda por codigo y sea mas facil buscar por ese codigo que por todo el id.
+Que cuando se mande un link de esta forma ... salga la imagen de la portada principal como en este ejemplo.

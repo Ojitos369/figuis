@@ -370,6 +370,35 @@
     gap: var(--sp-2);
 }
 
+.reactionChip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 10px;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    color: var(--text);
+    font-size: var(--fs-sm);
+    cursor: pointer;
+    transition: background var(--t-fast), border-color var(--t-fast);
+
+    &:hover { background: var(--surface-2); }
+
+    &.reactionChipActive {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+        color: var(--accent-hover);
+    }
+}
+
+.reactionChipCount {
+    font-size: var(--fs-xs);
+    color: var(--text-soft);
+
+    .reactionChipActive & { color: var(--accent-hover); }
+}
+
 .tagSearchInput {
     width: 100%;
     padding: 0.55rem 0.8rem;

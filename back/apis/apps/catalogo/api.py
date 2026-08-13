@@ -1,6 +1,71 @@
+import io
+import os
 import re
+import uuid
+import zipfile
 
 from core.bases.apis import BaseApi, NoSession, pln
+from core.bases.utils import CODIGO_EXPR
+from core.conf.settings import MEDIA_DIR
+from fastapi.responses import StreamingResponse
+
+
+class DownloadFiguraMedia(NoSession, BaseApi):
+    """Genera un ZIP con los resultados y archivos relacionados de una figura."""
+
+    def main(self):
+        figura_id = self.data.get("id")
+        try:
+            figura_id = str(uuid.UUID(str(figura_id)))
+        except (ValueError, AttributeError):
+            raise self.MYE("Figura no encontrada")
+
+        figura = self.conexion.consulta_asociativa(
+            "SELECT id, nombre FROM figuras WHERE id = :id AND estatus = 'publico'",
+            {"id": figura_id},
+        )
+        if figura.empty:
+            raise self.MYE("Figura no encontrada")
+
+        archivos = self.conexion.consulta_asociativa(
+            """
+            SELECT archivo_url, tipo
+            FROM figura_archivos
+            WHERE figura_id = :id AND tipo IN ('resultado', 'relacionado')
+            ORDER BY tipo ASC, orden ASC, created_at ASC
+            """,
+            {"id": figura_id},
+        )
+
+        buffer = io.BytesIO()
+        used_names = set()
+        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+            for row in self.d2d(archivos):
+                relative_path = str(row["archivo_url"])
+                file_path = os.path.abspath(os.path.join(MEDIA_DIR, relative_path))
+                if os.path.commonpath((file_path, os.path.abspath(MEDIA_DIR))) != os.path.abspath(MEDIA_DIR):
+                    continue
+                if not os.path.isfile(file_path):
+                    continue
+
+                base_name = os.path.basename(relative_path)
+                archive_name = f"{row['tipo']}/{base_name}"
+                stem, extension = os.path.splitext(archive_name)
+                suffix = 1
+                while archive_name in used_names:
+                    archive_name = f"{stem}_{suffix}{extension}"
+                    suffix += 1
+                used_names.add(archive_name)
+                archive.write(file_path, archive_name)
+
+        buffer.seek(0)
+        nombre = str(figura.iloc[0]["nombre"] or "album").strip()
+        safe_name = re.sub(r"[^a-zA-Z0-9._-]+", "_", nombre).strip("._") or "album"
+        return StreamingResponse(
+            buffer,
+            media_type="application/zip",
+            headers={"Content-Disposition": f'attachment; filename="{safe_name}.zip"'},
+        )
 
 
 class GetFiguras(NoSession, BaseApi):
@@ -11,6 +76,7 @@ class GetFiguras(NoSession, BaseApi):
         "fecha_asc": "f.created_at ASC",
         "tags_desc": "num_etiquetas DESC, f.nombre ASC",
         "media_desc": "num_media DESC, f.nombre ASC",
+        "reacciones_desc": "num_reacciones DESC, f.nombre ASC",
     }
 
     def main(self):
@@ -38,6 +104,7 @@ class GetFiguras(NoSession, BaseApi):
 
         query = f"""
         SELECT f.id, f.nombre, f.descripcion, f.created_at,
+            {CODIGO_EXPR} as codigo,
             (
                 SELECT fa.archivo_url FROM figura_archivos fa
                 WHERE fa.figura_id = f.id AND fa.tipo = 'resultado'
@@ -63,7 +130,8 @@ class GetFiguras(NoSession, BaseApi):
                 ) r
             ) as reacciones_top,
             (SELECT COUNT(*) FROM figura_etiquetas fe3 WHERE fe3.figura_id = f.id) as num_etiquetas,
-            (SELECT COUNT(*) FROM figura_archivos fa3 WHERE fa3.figura_id = f.id) as num_media
+            (SELECT COUNT(*) FROM figura_archivos fa3 WHERE fa3.figura_id = f.id) as num_media,
+            (SELECT COUNT(*) FROM figura_reacciones fr2 WHERE fr2.figura_id = f.id) as num_reacciones
         FROM figuras f
         {self.joins}
         WHERE f.estatus = 'publico' {self.filtros}
@@ -99,14 +167,15 @@ class GetFiguras(NoSession, BaseApi):
 
             if is_regex:
                 # ~* = regex posix, sin distinguir mayusculas. Busca en nombre,
-                # descripcion e id (para poder pegar/buscar un id directo).
-                self.filtros += " AND (f.nombre ~* :q OR f.descripcion ~* :q OR f.id::text ~* :q)\n"
+                # descripcion, id y codigo corto (para poder pegar/buscar un
+                # id o codigo directo).
+                self.filtros += f" AND (f.nombre ~* :q OR f.descripcion ~* :q OR f.id::text ~* :q OR {CODIGO_EXPR} ~* :q)\n"
                 self.query_data["q"] = q
             else:
                 # el texto no es un regex valido (parentesis sueltos, etc):
                 # se cae a busqueda de substring normal, sin tronar la consulta.
                 q_like = q.lower()
-                self.filtros += " AND (LOWER(f.nombre) LIKE :q OR LOWER(f.descripcion) LIKE :q OR LOWER(f.id::text) LIKE :q)\n"
+                self.filtros += f" AND (LOWER(f.nombre) LIKE :q OR LOWER(f.descripcion) LIKE :q OR LOWER(f.id::text) LIKE :q OR {CODIGO_EXPR} LIKE :q)\n"
                 self.query_data["q"] = f"%{q_like}%"
 
         desde = self.data.get("desde", None)
@@ -130,13 +199,24 @@ class GetFiguras(NoSession, BaseApi):
                 self.filtros += " AND fe_filter.etiqueta_id = ANY(:etiquetas_ids::uuid[])\n"
                 self.query_data["etiquetas_ids"] = ids
 
+        reacciones_raw = self.data.get("reacciones", None)
+        if reacciones_raw:
+            if isinstance(reacciones_raw, str):
+                emojis = [e for e in reacciones_raw.split(",") if e]
+            else:
+                emojis = list(reacciones_raw)
+            if emojis:
+                self.joins += " JOIN figura_reacciones fr_filter ON fr_filter.figura_id = f.id\n"
+                self.filtros += " AND fr_filter.emoji = ANY(:reacciones_emojis::text[])\n"
+                self.query_data["reacciones_emojis"] = emojis
+
 
 class GetFigura(NoSession, BaseApi):
     def main(self):
         self.show_me()
         id = self.data["id"]
 
-        query = "SELECT * FROM figuras WHERE id = :id AND estatus = 'publico'"
+        query = f"SELECT f.*, {CODIGO_EXPR} as codigo FROM figuras f WHERE f.id = :id AND f.estatus = 'publico'"
         res = self.conexion.consulta_asociativa(query, {"id": id})
         if res.empty:
             raise self.MYE("Figura no encontrada")
@@ -242,3 +322,17 @@ class GetEtiquetas(NoSession, BaseApi):
         """
         etiquetas = self.conexion.consulta_asociativa(query)
         self.response = {"data": self.d2d(etiquetas)}
+
+
+class GetReacciones(NoSession, BaseApi):
+    def main(self):
+        self.show_me()
+        query = """
+        SELECT r.emoji, COUNT(DISTINCT r.figura_id) as num_figuras, COUNT(*) as total
+        FROM figura_reacciones r
+        JOIN figuras f ON f.id = r.figura_id AND f.estatus = 'publico'
+        GROUP BY r.emoji
+        ORDER BY total DESC
+        """
+        reacciones = self.conexion.consulta_asociativa(query)
+        self.response = {"data": self.d2d(reacciones)}

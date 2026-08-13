@@ -134,6 +134,35 @@
     gap: var(--sp-2);
 }
 
+.reactionChip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 10px;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    color: var(--text);
+    font-size: var(--fs-sm);
+    cursor: pointer;
+    transition: background var(--t-fast), border-color var(--t-fast);
+
+    &:hover { background: var(--surface-2); }
+
+    &.reactionChipActive {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+        color: var(--accent-hover);
+    }
+}
+
+.reactionChipCount {
+    font-size: var(--fs-xs);
+    color: var(--text-soft);
+
+    .reactionChipActive & { color: var(--accent-hover); }
+}
+
 .searchHint {
     font-size: 0.7rem;
     color: var(--text-muted);
@@ -491,4 +520,80 @@
     background: var(--accent-soft);
 
     &:hover { background: var(--accent-soft-2); }
+}
+
+.downloadActions {
+    display: flex;
+    gap: var(--sp-2);
+}
+
+.downloadMenuWrap {
+    position: relative;
+}
+
+.downloadMenu {
+    position: absolute;
+    z-index: 2;
+    top: calc(100% + var(--sp-2));
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    min-width: 220px;
+    padding: var(--sp-1);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-1);
+    box-shadow: var(--shadow-md);
+
+    a, button {
+        padding: 0.55rem 0.7rem;
+        border: none;
+        border-radius: var(--r-sm);
+        background: transparent;
+        color: var(--text);
+        font: inherit;
+        font-size: var(--fs-xs);
+        text-align: left;
+        text-decoration: none;
+        white-space: nowrap;
+        cursor: pointer;
+
+        &:hover { background: var(--surface-2); }
+        &:disabled { color: var(--text-muted); cursor: wait; }
+    }
+}
+
+.downloadBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text);
+    transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+
+    svg {
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 1.8;
+    }
+
+    &:hover {
+        background: var(--surface-3);
+        border-color: var(--border-strong);
+        color: var(--accent-hover);
+    }
+}
+
+.detailCodigo {
+    font-size: var(--fs-xs);
+    color: var(--text-soft);
+    letter-spacing: 0.03em;
 }

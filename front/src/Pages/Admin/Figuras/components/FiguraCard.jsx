@@ -18,7 +18,10 @@ export const FiguraCard = ({ figura, style, onEdit, onDelete, enterDelay = 0 }) 
             </div>
             <div className={style.body}>
                 <div className={style.name}>{figura.nombre}</div>
-                <div className={style.meta}>{figura.num_archivos || 0} archivo{figura.num_archivos !== 1 ? 's' : ''}</div>
+                <div className={style.meta}>
+                    {figura.num_archivos || 0} archivo{figura.num_archivos !== 1 ? 's' : ''}
+                    {!!figura.codigo && <> · #{figura.codigo}</>}
+                </div>
                 {!!figura.etiquetas?.length && (
                     <div className={style.tags}>
                         {figura.etiquetas.slice(0, 3).map(e => (

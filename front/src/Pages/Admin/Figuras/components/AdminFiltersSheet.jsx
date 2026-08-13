@@ -9,11 +9,13 @@ const ORDEN_OPTS = [
     { value: 'nombre_desc', label: 'Nombre (Z-A)' },
     { value: 'tags_desc', label: 'Más etiquetas' },
     { value: 'media_desc', label: 'Más contenido' },
+    { value: 'reacciones_desc', label: 'Más reaccionadas' },
 ];
 
 export const AdminFiltersSheet = ({ ls }) => {
     const {
         style, q, setQ, estatus, setEstatus, etiquetas, selectedTags, toggleTag,
+        reaccionesDisponibles, selectedReacciones, toggleReaccionFiltro,
         orden, setOrden, desde, setDesde, hasta, setHasta,
         filtersOpen, setFiltersOpen, activeFiltersCount, clearFilters, applyFilters,
     } = ls;
@@ -43,7 +45,7 @@ export const AdminFiltersSheet = ({ ls }) => {
                         <span className={style.searchIcon}>🔍</span>
                         <input
                             type="text"
-                            placeholder="Buscar por nombre, descripción o id..."
+                            placeholder="Buscar por nombre, código o id..."
                             value={q}
                             onChange={e => setQ(e.target.value)}
                             className={style.searchInput}
@@ -111,6 +113,28 @@ export const AdminFiltersSheet = ({ ls }) => {
                             {!filteredEtiquetas.length && (
                                 <span className={style.tagSearchEmpty}>Sin coincidencias.</span>
                             )}
+                        </div>
+                    </div>
+                )}
+
+                {!!reaccionesDisponibles.length && (
+                    <div className={style.filterSection}>
+                        <span className={style.filterSectionTitle}>Reacciones</span>
+                        <div className={style.filterTagsWrap}>
+                            {reaccionesDisponibles.map(r => {
+                                const active = selectedReacciones.includes(r.emoji);
+                                return (
+                                    <button
+                                        key={r.emoji}
+                                        type="button"
+                                        className={`${style.reactionChip} ${active ? style.reactionChipActive : ''}`}
+                                        onClick={() => toggleReaccionFiltro(r.emoji)}
+                                    >
+                                        <span>{r.emoji}</span>
+                                        <span className={style.reactionChipCount}>{r.num_figuras}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
                 )}

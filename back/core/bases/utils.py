@@ -5,6 +5,13 @@ import datetime
 from ojitos369_postgres_db.postgres_db import ConexionPostgreSQL
 from core.conf.settings import MYE, ce, prod_mode, db_data
 
+# codigo corto de 6 digitos derivado del id (uuid): toma los primeros 6
+# caracteres hex del uuid, los interpreta como numero y los recorta a 6
+# digitos. Determinista (siempre el mismo codigo para el mismo id), no se
+# guarda en tabla, se calcula al vuelo en cada query. Requiere alias `f`
+# sobre la tabla `figuras` en el FROM de la query donde se use.
+CODIGO_EXPR = "lpad(((('x' || left(replace(f.id::text,'-',''),6))::bit(24)::int) % 1000000)::text, 6, '0')"
+
 class ClassBase:
     def create_conexion(self):
         self.close_conexion()

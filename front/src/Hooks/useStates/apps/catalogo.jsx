@@ -44,6 +44,14 @@ export const catalogo = props => {
             .catch(() => {});
     };
 
+    const getReacciones = () => {
+        miAxios.get("catalogo/reacciones_disponibles")
+            .then(res => {
+                u1("catalogo", "reaccionesDisponibles", res.data.data || []);
+            })
+            .catch(() => {});
+    };
+
     const toggleReaccion = (figuraId, emoji, onDone) => {
         miAxios.post("catalogo/toggle_reaccion", { figura_id: figuraId, emoji, visitor_id: getVisitorId() })
             .then(res => { if (onDone) onDone(res.data); })
@@ -52,5 +60,5 @@ export const catalogo = props => {
             });
     };
 
-    return { getFiguras, getFigura, getEtiquetas, toggleReaccion };
+    return { getFiguras, getFigura, getEtiquetas, getReacciones, toggleReaccion };
 };

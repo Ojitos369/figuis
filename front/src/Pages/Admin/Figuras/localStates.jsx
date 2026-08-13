@@ -9,10 +9,12 @@ export const localStates = () => {
     const pagination = useMemo(() => s.admin?.pagination || null, [s.admin?.pagination]);
     const loading = useMemo(() => s.loadings?.admin?.figuras, [s.loadings?.admin?.figuras]);
     const etiquetas = useMemo(() => s.catalogo?.etiquetas || [], [s.catalogo?.etiquetas]);
+    const reaccionesDisponibles = useMemo(() => s.catalogo?.reaccionesDisponibles || [], [s.catalogo?.reaccionesDisponibles]);
 
     const [q, setQ] = createState(['adminFiguras', 'q'], '');
     const [estatus, setEstatus] = createState(['adminFiguras', 'estatus'], '');
     const [selectedTags, setSelectedTags] = createState(['adminFiguras', 'selectedTags'], []);
+    const [selectedReacciones, setSelectedReacciones] = createState(['adminFiguras', 'selectedReacciones'], []);
     const [orden, setOrdenRaw] = createState(['adminFiguras', 'orden'], 'fecha_desc');
     const [desde, setDesde] = createState(['adminFiguras', 'desde'], '');
     const [hasta, setHasta] = createState(['adminFiguras', 'hasta'], '');
@@ -41,11 +43,12 @@ export const localStates = () => {
         if (q) params.q = q;
         if (estatus) params.estatus = estatus;
         if (selectedTags.length) params.etiquetas = selectedTags.join(',');
+        if (selectedReacciones.length) params.reacciones = selectedReacciones.join(',');
         if (orden) params.orden = orden;
         if (desde) params.desde = desde;
         if (hasta) params.hasta = hasta;
         f.admin.getFiguras(params);
-    }, [f.admin, page, q, estatus, selectedTags, orden, desde, hasta]);
+    }, [f.admin, page, q, estatus, selectedTags, selectedReacciones, orden, desde, hasta]);
 
     const setQAndResetPage = useCallback((value) => {
         setQ(value);
@@ -70,10 +73,19 @@ export const localStates = () => {
         setPage(1);
     }, [selectedTags]);
 
+    const toggleReaccionFiltro = useCallback((emoji) => {
+        const next = selectedReacciones.includes(emoji)
+            ? selectedReacciones.filter(e => e !== emoji)
+            : [...selectedReacciones, emoji];
+        setSelectedReacciones(next);
+        setPage(1);
+    }, [selectedReacciones]);
+
     const clearFilters = useCallback(() => {
         setQ('');
         setEstatus('');
         setSelectedTags([]);
+        setSelectedReacciones([]);
         setOrdenRaw('fecha_desc');
         setDesde('');
         setHasta('');
@@ -81,8 +93,8 @@ export const localStates = () => {
     }, []);
 
     const activeFiltersCount = useMemo(
-        () => selectedTags.length + (estatus ? 1 : 0) + (orden !== 'fecha_desc' ? 1 : 0) + (q ? 1 : 0) + (desde ? 1 : 0) + (hasta ? 1 : 0),
-        [selectedTags, estatus, orden, q, desde, hasta]
+        () => selectedTags.length + selectedReacciones.length + (estatus ? 1 : 0) + (orden !== 'fecha_desc' ? 1 : 0) + (q ? 1 : 0) + (desde ? 1 : 0) + (hasta ? 1 : 0),
+        [selectedTags, selectedReacciones, estatus, orden, q, desde, hasta]
     );
 
     const applyFilters = useCallback(() => {
@@ -97,9 +109,10 @@ export const localStates = () => {
     }, [f.admin, reload]);
 
     return {
-        style, figuras, pagination, loading, etiquetas,
+        style, figuras, pagination, loading, etiquetas, reaccionesDisponibles,
         q, setQ: setQAndResetPage, estatus, setEstatus: setEstatusAndResetPage,
-        selectedTags, toggleTag, orden, setOrden, desde, setDesde, hasta, setHasta,
+        selectedTags, toggleTag, selectedReacciones, toggleReaccionFiltro,
+        orden, setOrden, desde, setDesde, hasta, setHasta,
         page, setPage, filtersOpen, setFiltersOpen, activeFiltersCount, clearFilters, applyFilters,
         showForm, editId, openCreate, openEdit, closeForm, reload, removeFigura,
     };
@@ -110,10 +123,11 @@ export const localEffects = (ls) => {
     useEffect(() => {
         f.u1('page', 'title', 'Figuras');
         f.catalogo.getEtiquetas();
+        f.catalogo.getReacciones();
     }, []);
 
     useEffect(() => {
         const t = setTimeout(() => ls.reload(), 350);
         return () => clearTimeout(t);
-    }, [ls.q, ls.estatus, ls.selectedTags, ls.orden, ls.desde, ls.hasta, ls.page]);
+    }, [ls.q, ls.estatus, ls.selectedTags, ls.selectedReacciones, ls.orden, ls.desde, ls.hasta, ls.page]);
 };

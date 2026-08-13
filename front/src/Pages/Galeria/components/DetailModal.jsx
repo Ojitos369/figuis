@@ -7,7 +7,7 @@ import { MediaThumb } from '../../../Components/MediaThumb';
 import { MediaViewer } from '../../../Components/MediaViewer';
 import { ReactionBar } from '../../../Components/ReactionBar';
 import { ErrorBoundary } from '../../../Components/ErrorBoundary';
-import { mediaUrl } from '../../../constants/api';
+import { LINK_API_PORT, mediaUrl } from '../../../constants/api';
 
 const SWIPE_THRESHOLD = 40;
 
@@ -15,11 +15,25 @@ const SWIPE_THRESHOLD = 40;
 // realmente activa la previsualizacion 3D.
 const STLViewer = lazy(() => import('../../../Components/STLViewer').then(m => ({ default: m.STLViewer })));
 
+const DownloadIcon = ({ all = false }) => (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M12 3v11m0 0 4-4m-4 4-4-4M5 18v2h14v-2" />
+        {all && <path d="M4 6h16" />}
+    </svg>
+);
+
+const fileNameFromPath = (path, fallback) => {
+    const cleanPath = String(path || '').split('?')[0];
+    return decodeURIComponent(cleanPath.split('/').pop() || fallback);
+};
+
 export const DetailModal = ({ ls }) => {
     const { f } = useStates();
     const { style, id, figuraActual, loadingDetail, closeDetail } = ls;
     const [activeIdx, setActiveIdx] = useState(0);
     const [show3D, setShow3D] = useState(false);
+    const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
+    const [downloadingMultiple, setDownloadingMultiple] = useState(false);
 
     const open = !!id;
     const notFound = open && figuraActual === false;
@@ -27,8 +41,14 @@ export const DetailModal = ({ ls }) => {
     const gallery = data ? [...(data.resultado || []), ...(data.relacionados || [])] : [];
     const modelo3d = data?.modelos_3d?.[0];
     const canNav = !show3D && gallery.length > 1;
+    const activeMedia = gallery[activeIdx];
 
-    useEffect(() => { setActiveIdx(0); setShow3D(false); }, [id]);
+    useEffect(() => {
+        setActiveIdx(0);
+        setShow3D(false);
+        setDownloadMenuOpen(false);
+        setDownloadingMultiple(false);
+    }, [id]);
 
     const goPrev = useCallback(() => {
         setActiveIdx(i => (i - 1 + gallery.length) % gallery.length);
@@ -64,13 +84,34 @@ export const DetailModal = ({ ls }) => {
     };
 
     const share = () => {
-        const url = `${window.location.origin}${window.location.pathname}#/figura/${id}`;
+        // ruta "real" (sin #) para que el crawler de WhatsApp/redes lea los
+        // meta og:image/og:title del back antes de redirigir al SPA.
+        const url = `${window.location.origin}/figura/${id}`;
         if (navigator.share) {
             navigator.share({ title: data?.nombre, url }).catch(() => {});
             return;
         }
         navigator.clipboard?.writeText(url).then(() => {
             f.general.notificacion({ title: 'Listo', message: 'Enlace copiado al portapapeles', mode: 'success' });
+        });
+    };
+
+    const downloadMultiple = () => {
+        if (downloadingMultiple) return;
+        setDownloadMenuOpen(false);
+        setDownloadingMultiple(true);
+
+        gallery.forEach((archivo, index) => {
+            window.setTimeout(() => {
+                const link = document.createElement('a');
+                link.href = mediaUrl(archivo.archivo_url);
+                link.download = fileNameFromPath(archivo.archivo_url, `media-${index + 1}`);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+
+                if (index === gallery.length - 1) setDownloadingMultiple(false);
+            }, index * 150);
         });
     };
 
@@ -134,6 +175,49 @@ export const DetailModal = ({ ls }) => {
                         </button>
                     )}
 
+                    {!!activeMedia && (
+                        <div className={style.downloadActions}>
+                            <a
+                                className={style.downloadBtn}
+                                href={mediaUrl(activeMedia.archivo_url)}
+                                download={fileNameFromPath(activeMedia.archivo_url, 'media')}
+                                title="Descargar archivo actual"
+                                aria-label="Descargar archivo actual"
+                            >
+                                <DownloadIcon />
+                            </a>
+                            <div className={style.downloadMenuWrap}>
+                                <button
+                                    type="button"
+                                    className={style.downloadBtn}
+                                    onClick={() => setDownloadMenuOpen(value => !value)}
+                                    title="Descargar todos los archivos del álbum"
+                                    aria-label="Descargar todos los archivos del álbum"
+                                    aria-expanded={downloadMenuOpen}
+                                >
+                                    <DownloadIcon all />
+                                </button>
+                                {downloadMenuOpen && (
+                                    <div className={style.downloadMenu}>
+                                        <a
+                                            href={`${LINK_API_PORT}/api/catalogo/figura/descargar?id=${encodeURIComponent(data.id)}`}
+                                            onClick={() => setDownloadMenuOpen(false)}
+                                        >
+                                            Descargar todos con ZIP
+                                        </a>
+                                        <button
+                                            type="button"
+                                            onClick={downloadMultiple}
+                                            disabled={downloadingMultiple}
+                                        >
+                                            {downloadingMultiple ? 'Descargando...' : 'Descargar todos individualmente'}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     {!!data.etiquetas?.length && (
                         <div className={style.detailTags}>
                             {data.etiquetas.map(e => (
@@ -151,6 +235,10 @@ export const DetailModal = ({ ls }) => {
                     <button type="button" className={style.shareBtn} onClick={share}>
                         🔗 Compartir
                     </button>
+
+                    {!!data.codigo && (
+                        <div className={style.detailCodigo}>Código: #{data.codigo}</div>
+                    )}
                 </div>
             )}
         </SheetModal>

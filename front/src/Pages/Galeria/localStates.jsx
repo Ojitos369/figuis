@@ -14,12 +14,14 @@ export const localStates = () => {
     const pagination = useMemo(() => s.catalogo?.pagination || null, [s.catalogo?.pagination]);
     const loading = useMemo(() => s.loadings?.catalogo?.figuras, [s.loadings?.catalogo?.figuras]);
     const etiquetas = useMemo(() => s.catalogo?.etiquetas || [], [s.catalogo?.etiquetas]);
+    const reaccionesDisponibles = useMemo(() => s.catalogo?.reaccionesDisponibles || [], [s.catalogo?.reaccionesDisponibles]);
 
     const figuraActual = useMemo(() => s.catalogo?.figuraActual, [s.catalogo?.figuraActual]);
     const loadingDetail = useMemo(() => s.loadings?.catalogo?.figura, [s.loadings?.catalogo?.figura]);
 
     const [q, setQ] = createState(['galeria', 'q'], '');
     const [selectedTags, setSelectedTags] = createState(['galeria', 'selectedTags'], []);
+    const [selectedReacciones, setSelectedReacciones] = createState(['galeria', 'selectedReacciones'], []);
     const [page, setPage] = createState(['galeria', 'page'], 1);
     const [orden, setOrdenRaw] = createState(['galeria', 'orden'], 'fecha_desc');
     const [desde, setDesde] = createState(['galeria', 'desde'], '');
@@ -38,6 +40,7 @@ export const localStates = () => {
         f.catalogo.getFiguras({
             q: q || undefined,
             etiquetas: selectedTags.length ? selectedTags.join(',') : undefined,
+            reacciones: selectedReacciones.length ? selectedReacciones.join(',') : undefined,
             orden: orden || undefined,
             desde: desde || undefined,
             hasta: hasta || undefined,
@@ -45,7 +48,7 @@ export const localStates = () => {
             limit: 24,
         });
         navigate('/');
-    }, [navigate, f.catalogo, q, selectedTags, orden, desde, hasta]);
+    }, [navigate, f.catalogo, q, selectedTags, selectedReacciones, orden, desde, hasta]);
 
     const toggleTag = useCallback((tagId) => {
         const next = selectedTags.includes(tagId)
@@ -54,6 +57,14 @@ export const localStates = () => {
         setSelectedTags(next);
         setPage(1);
     }, [selectedTags]);
+
+    const toggleReaccionFiltro = useCallback((emoji) => {
+        const next = selectedReacciones.includes(emoji)
+            ? selectedReacciones.filter(e => e !== emoji)
+            : [...selectedReacciones, emoji];
+        setSelectedReacciones(next);
+        setPage(1);
+    }, [selectedReacciones]);
 
     const setQAndResetPage = useCallback((value) => {
         setQ(value);
@@ -68,6 +79,7 @@ export const localStates = () => {
     const clearFilters = useCallback(() => {
         setQ('');
         setSelectedTags([]);
+        setSelectedReacciones([]);
         setOrdenRaw('fecha_desc');
         setDesde('');
         setHasta('');
@@ -75,8 +87,8 @@ export const localStates = () => {
     }, []);
 
     const activeFiltersCount = useMemo(
-        () => selectedTags.length + (orden !== 'fecha_desc' ? 1 : 0) + (q ? 1 : 0) + (desde ? 1 : 0) + (hasta ? 1 : 0),
-        [selectedTags, orden, q, desde, hasta]
+        () => selectedTags.length + selectedReacciones.length + (orden !== 'fecha_desc' ? 1 : 0) + (q ? 1 : 0) + (desde ? 1 : 0) + (hasta ? 1 : 0),
+        [selectedTags, selectedReacciones, orden, q, desde, hasta]
     );
 
     const openDetail = useCallback((figuraId) => {
@@ -88,9 +100,10 @@ export const localStates = () => {
     }, [navigate]);
 
     return {
-        style, id, figuras, pagination, loading, etiquetas,
+        style, id, figuras, pagination, loading, etiquetas, reaccionesDisponibles,
         figuraActual, loadingDetail,
-        q, setQ: setQAndResetPage, selectedTags, toggleTag, page, setPage,
+        q, setQ: setQAndResetPage, selectedTags, toggleTag,
+        selectedReacciones, toggleReaccionFiltro, page, setPage,
         orden, setOrden, desde, setDesde, hasta, setHasta,
         filtersOpen, openFilters, closeFilters, applyFilters, activeFiltersCount, clearFilters,
         openDetail, closeDetail,
@@ -104,6 +117,7 @@ export const localEffects = (ls) => {
         f.u1('page', 'title', 'Catálogo');
         f.u1('sidebar', 'sideMode', undefined);
         f.catalogo.getEtiquetas();
+        f.catalogo.getReacciones();
     }, []);
 
     useEffect(() => {
@@ -111,6 +125,7 @@ export const localEffects = (ls) => {
             f.catalogo.getFiguras({
                 q: ls.q || undefined,
                 etiquetas: ls.selectedTags.length ? ls.selectedTags.join(',') : undefined,
+                reacciones: ls.selectedReacciones.length ? ls.selectedReacciones.join(',') : undefined,
                 orden: ls.orden || undefined,
                 desde: ls.desde || undefined,
                 hasta: ls.hasta || undefined,
@@ -119,11 +134,24 @@ export const localEffects = (ls) => {
             });
         }, 300);
         return () => clearTimeout(t);
-    }, [ls.q, ls.selectedTags, ls.orden, ls.desde, ls.hasta, ls.page]);
+    }, [ls.q, ls.selectedTags, ls.selectedReacciones, ls.orden, ls.desde, ls.hasta, ls.page]);
 
     useEffect(() => {
         if (ls.id) {
             f.catalogo.getFigura(ls.id);
         }
     }, [ls.id]);
+
+    // al entrar al detalle de una figura se cambia el titulo de la pestana al
+    // nombre de la figura; al salir (o si no se encontro) vuelve al del catalogo.
+    useEffect(() => {
+        if (!ls.id) {
+            document.title = 'Figuis · Catálogo';
+            return;
+        }
+        if (ls.figuraActual && ls.figuraActual.nombre) {
+            document.title = `${ls.figuraActual.nombre} · Figuis`;
+        }
+        return () => { document.title = 'Figuis · Catálogo'; };
+    }, [ls.id, ls.figuraActual]);
 };

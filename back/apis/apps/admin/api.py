@@ -4,6 +4,7 @@ import re
 import struct
 
 from core.bases.apis import AdminApi, pln
+from core.bases.utils import CODIGO_EXPR
 from core.conf.settings import MEDIA_DIR
 
 
@@ -33,6 +34,7 @@ class GetFigurasAdmin(AdminApi):
         "fecha_asc": "f.created_at ASC",
         "tags_desc": "num_etiquetas DESC, f.nombre ASC",
         "media_desc": "num_media DESC, f.nombre ASC",
+        "reacciones_desc": "num_reacciones DESC, f.nombre ASC",
     }
 
     def main(self):
@@ -60,6 +62,7 @@ class GetFigurasAdmin(AdminApi):
 
         query = f"""
         SELECT f.*,
+            {CODIGO_EXPR} as codigo,
             (
                 SELECT fa.archivo_url FROM figura_archivos fa
                 WHERE fa.figura_id = f.id AND fa.tipo = 'resultado'
@@ -74,7 +77,8 @@ class GetFigurasAdmin(AdminApi):
                 WHERE fe.figura_id = f.id
             ) as etiquetas,
             (SELECT COUNT(*) FROM figura_etiquetas fe2 WHERE fe2.figura_id = f.id) as num_etiquetas,
-            (SELECT COUNT(*) FROM figura_archivos fa5 WHERE fa5.figura_id = f.id) as num_media
+            (SELECT COUNT(*) FROM figura_archivos fa5 WHERE fa5.figura_id = f.id) as num_media,
+            (SELECT COUNT(*) FROM figura_reacciones fr2 WHERE fr2.figura_id = f.id) as num_reacciones
         FROM figuras f
         {self.joins}
         WHERE 1=1 {self.filtros}
@@ -107,11 +111,11 @@ class GetFigurasAdmin(AdminApi):
                 is_regex = False
 
             if is_regex:
-                self.filtros += " AND (f.nombre ~* :q OR f.descripcion ~* :q OR f.id::text ~* :q)\n"
+                self.filtros += f" AND (f.nombre ~* :q OR f.descripcion ~* :q OR f.id::text ~* :q OR {CODIGO_EXPR} ~* :q)\n"
                 self.query_data["q"] = q
             else:
                 q_like = q.lower()
-                self.filtros += " AND (LOWER(f.nombre) LIKE :q OR LOWER(f.descripcion) LIKE :q OR LOWER(f.id::text) LIKE :q)\n"
+                self.filtros += f" AND (LOWER(f.nombre) LIKE :q OR LOWER(f.descripcion) LIKE :q OR LOWER(f.id::text) LIKE :q OR {CODIGO_EXPR} LIKE :q)\n"
                 self.query_data["q"] = f"%{q_like}%"
 
         estatus = self.data.get("estatus", None)
@@ -140,13 +144,26 @@ class GetFigurasAdmin(AdminApi):
                 self.filtros += " AND fe_filter.etiqueta_id = ANY(:etiquetas_ids::uuid[])\n"
                 self.query_data["etiquetas_ids"] = ids
 
+        reacciones_raw = self.data.get("reacciones", None)
+        if reacciones_raw:
+            if isinstance(reacciones_raw, str):
+                emojis = [e for e in reacciones_raw.split(",") if e]
+            else:
+                emojis = list(reacciones_raw)
+            if emojis:
+                self.joins += " JOIN figura_reacciones fr_filter ON fr_filter.figura_id = f.id\n"
+                self.filtros += " AND fr_filter.emoji = ANY(:reacciones_emojis::text[])\n"
+                self.query_data["reacciones_emojis"] = emojis
+
 
 class GetFiguraAdmin(AdminApi):
     def main(self):
         self.show_me()
         id = self.data["id"]
 
-        res = self.conexion.consulta_asociativa("SELECT * FROM figuras WHERE id = :id", {"id": id})
+        res = self.conexion.consulta_asociativa(
+            f"SELECT f.*, {CODIGO_EXPR} as codigo FROM figuras f WHERE f.id = :id", {"id": id}
+        )
         if res.empty:
             raise self.MYE("Figura no encontrada")
         figura = self.d2d(res)[0]
