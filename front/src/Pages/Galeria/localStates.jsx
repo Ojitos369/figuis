@@ -114,6 +114,10 @@ export const localEffects = (ls) => {
     const { f } = useStates();
 
     useEffect(() => {
+        f.auth.validateLogin();
+    }, []);
+
+    useEffect(() => {
         f.u1('page', 'title', 'Catálogo');
         f.u1('sidebar', 'sideMode', undefined);
         f.catalogo.getEtiquetas();

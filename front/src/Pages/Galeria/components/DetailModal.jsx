@@ -28,7 +28,7 @@ const fileNameFromPath = (path, fallback) => {
 };
 
 export const DetailModal = ({ ls }) => {
-    const { f } = useStates();
+    const { s, f } = useStates();
     const { style, id, figuraActual, loadingDetail, closeDetail } = ls;
     const [activeIdx, setActiveIdx] = useState(0);
     const [show3D, setShow3D] = useState(false);
@@ -36,6 +36,7 @@ export const DetailModal = ({ ls }) => {
     const [downloadingMultiple, setDownloadingMultiple] = useState(false);
 
     const open = !!id;
+    const isLogged = s.auth?.logged === true;
     const notFound = open && figuraActual === false;
     const data = open && figuraActual ? figuraActual : null;
     const gallery = data ? [...(data.resultado || []), ...(data.relacionados || [])] : [];
@@ -100,6 +101,23 @@ export const DetailModal = ({ ls }) => {
         if (!data?.codigo) return;
         navigator.clipboard?.writeText(data.codigo).then(() => {
             f.general.notificacion({ title: 'Listo', message: 'Código copiado al portapapeles', mode: 'success' });
+        });
+    };
+
+    const copyMetadata = () => {
+        if (!isLogged || !data) return;
+
+        const tags = (data.etiquetas || [])
+            .map(tag => String(tag.nombre || '').trim().replace(/\s+/g, ''))
+            .filter(Boolean)
+            .map(tag => `#${tag}`)
+            .join(' ');
+        const hashtags = [tags, '#figures', '#3dprinting', '#3dfigures'].filter(Boolean).join(' ');
+        const url = `${window.location.origin}/figura/${id}`;
+        const metadata = `${data.nombre || ''}\n${hashtags}\n\nCodigo del Album\n${data.codigo || ''}\n${url}`;
+
+        navigator.clipboard?.writeText(metadata)?.then(() => {
+            f.general.notificacion({ title: 'Listo', message: 'Metadata copiada al portapapeles', mode: 'success' });
         });
     };
 
@@ -246,6 +264,11 @@ export const DetailModal = ({ ls }) => {
                         {!!data.codigo && (
                             <button type="button" className={style.shareBtn} onClick={copyCodigo}>
                                 📋 Copiar código
+                            </button>
+                        )}
+                        {isLogged && (
+                            <button type="button" className={style.shareBtn} onClick={copyMetadata}>
+                                📋 Copiar metadata
                             </button>
                         )}
                     </div>

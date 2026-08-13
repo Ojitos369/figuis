@@ -1,11 +1,11 @@
 {
     "schema_version": 1,
-    "commit": "58d4a96a140e9604a9709da91fadb1627f86ed70",
-    "indexed_at": "2026-08-13T15:53:52Z",
+    "commit": "8ce3dfce1cc13b5b9c875b889e2a78ae20e84b4f",
+    "indexed_at": "2026-08-13T17:59:23Z",
     "project": "home-ojitos369-Documents-progra-ojitos369-figuis",
-    "nodes": 982,
-    "edges": 2168,
-    "original_size": 3342336,
-    "compressed_size": 643285,
-    "compression_level": 9
+    "nodes": 1035,
+    "edges": 2195,
+    "original_size": 5111808,
+    "compressed_size": 782416,
+    "compression_level": 3
 }
