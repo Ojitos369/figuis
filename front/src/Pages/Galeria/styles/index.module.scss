@@ -520,6 +520,61 @@
     &:hover { background: var(--surface-3); }
 }
 
+.shareMenuWrap {
+    position: relative;
+}
+
+.shareMenu {
+    position: absolute;
+    z-index: 3;
+    top: calc(100% + var(--sp-2));
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    min-width: 210px;
+    padding: var(--sp-1);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface-1);
+    box-shadow: var(--shadow-md);
+
+    button {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-2);
+        padding: 0.55rem 0.7rem;
+        border: none;
+        border-radius: var(--r-sm);
+        background: transparent;
+        color: var(--text);
+        font: inherit;
+        font-size: var(--fs-xs);
+        text-align: left;
+        white-space: nowrap;
+        cursor: pointer;
+
+        &:hover { background: var(--surface-2); }
+    }
+}
+
+.socialLogo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: var(--fw-bold);
+}
+
+.copyLogo { background: var(--accent); }
+.whatsappLogo { background: #25d366; }
+.facebookLogo { background: #1877f2; font-family: Arial, sans-serif; font-size: 1rem; }
+.instagramLogo { background: linear-gradient(135deg, #feda75, #d62976 55%, #4f5bd5); font-size: 1rem; }
+.storiesLogo { background: linear-gradient(135deg, #ff9f43, #ee5253 55%, #5f27cd); font-size: 0.9rem; }
+
 .view3dBtn {
     align-self: flex-start;
     border-color: var(--accent);

@@ -1,3 +1,9 @@
-Cuando se entre a una para ver el detalle y se cambie de pagina tambien se debe de cambiar el titulo al del conjunto.
-Crea un nuevo campo para los album que sea un codigo de 6 digitos tomados de su id, para que tambien acepte busqueda por codigo y sea mas facil buscar por ese codigo que por todo el id.
-Que cuando se mande un link de esta forma ... salga la imagen de la portada principal como en este ejemplo.
+Realiza cambios para que la sesion para que si esta la cookie de sesion en el detalle de galeria este la opcion de copiar metadata.
+Al hacer click debe de copiar al portapapeles lo siguiente:
+Nombre \n
+#hastags #de #los #tags + #figures #3dprinting #3dfigures \n
+\n
+Codigo del Album \n
+Url del album
+
+Esta opcion solo debe salir si esta loggeado y en la pantalla de vista general, si no esta loggueado no debe salir en ningun lado.

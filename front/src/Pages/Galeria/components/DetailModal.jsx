@@ -33,6 +33,7 @@ export const DetailModal = ({ ls }) => {
     const [activeIdx, setActiveIdx] = useState(0);
     const [show3D, setShow3D] = useState(false);
     const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
+    const [shareMenuOpen, setShareMenuOpen] = useState(false);
     const [downloadingMultiple, setDownloadingMultiple] = useState(false);
 
     const open = !!id;
@@ -48,6 +49,7 @@ export const DetailModal = ({ ls }) => {
         setActiveIdx(0);
         setShow3D(false);
         setDownloadMenuOpen(false);
+        setShareMenuOpen(false);
         setDownloadingMultiple(false);
     }, [id]);
 
@@ -84,17 +86,45 @@ export const DetailModal = ({ ls }) => {
         if (dx > 0) goPrev(); else goNext();
     };
 
-    const share = () => {
-        // ruta "real" (sin #) para que el crawler de WhatsApp/redes lea los
-        // meta og:image/og:title del back antes de redirigir al SPA.
+    const getShareData = () => {
         const url = `${window.location.origin}/figura/${id}`;
-        if (navigator.share) {
-            navigator.share({ title: data?.nombre, url }).catch(() => {});
+        const text = `${data?.nombre || ''}\nCodigo: ${data?.codigo || ''}\n${url}`;
+        return { text, url };
+    };
+
+    const copyShareText = () => {
+        if (!data) return;
+        const { text } = getShareData();
+        navigator.clipboard?.writeText(text)?.then(() => {
+            setShareMenuOpen(false);
+            f.general.notificacion({ title: 'Listo', message: 'Texto copiado al portapapeles', mode: 'success' });
+        });
+    };
+
+    const openShareUrl = (shareUrl) => {
+        window.open(shareUrl, '_blank', 'noopener,noreferrer');
+        setShareMenuOpen(false);
+    };
+
+    const shareNative = async (fallbackUrl) => {
+        if (!data) return;
+        if (!navigator.share) {
+            openShareUrl(fallbackUrl);
             return;
         }
-        navigator.clipboard?.writeText(url).then(() => {
-            f.general.notificacion({ title: 'Listo', message: 'Enlace copiado al portapapeles', mode: 'success' });
-        });
+        const { text, url } = getShareData();
+        try {
+            await navigator.share({ title: data.nombre, text, url });
+            setShareMenuOpen(false);
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                f.general.notificacion({ title: 'No disponible', message: 'No se pudo abrir el menú de compartir', mode: 'danger' });
+            }
+        }
+    };
+
+    const share = () => {
+        setShareMenuOpen(value => !value);
     };
 
     const copyCodigo = () => {
@@ -114,7 +144,7 @@ export const DetailModal = ({ ls }) => {
             .join(' ');
         const hashtags = [tags, '#figures', '#3dprinting', '#3dfigures'].filter(Boolean).join(' ');
         const url = `${window.location.origin}/figura/${id}`;
-        const metadata = `${data.nombre || ''}\n${hashtags}\n\nCodigo del Album\n${data.codigo || ''}\n${url}`;
+        const metadata = `${data.nombre || ''}\n${hashtags}\n\nCodigo: ${data.codigo || ''}\n${url}`;
 
         navigator.clipboard?.writeText(metadata)?.then(() => {
             f.general.notificacion({ title: 'Listo', message: 'Metadata copiada al portapapeles', mode: 'success' });
@@ -258,9 +288,41 @@ export const DetailModal = ({ ls }) => {
                     <ReactionBar figuraId={data.id} reacciones={data.reacciones} misReacciones={data.mis_reacciones} />
 
                     <div className={style.actionsRow}>
-                        <button type="button" className={style.shareBtn} onClick={share}>
-                            🔗 Compartir
-                        </button>
+                        <div className={style.shareMenuWrap}>
+                            <button type="button" className={style.shareBtn} onClick={share} aria-expanded={shareMenuOpen}>
+                                🔗 Compartir
+                            </button>
+                            {shareMenuOpen && (
+                                <div className={style.shareMenu}>
+                                    <button type="button" onClick={copyShareText}>
+                                        <span className={`${style.socialLogo} ${style.copyLogo}`} aria-hidden="true">📋</span>
+                                        Copiar texto
+                                    </button>
+                                    <button type="button" onClick={() => {
+                                        const { text } = getShareData();
+                                        openShareUrl(`https://wa.me/?text=${encodeURIComponent(text)}`);
+                                    }}>
+                                        <span className={`${style.socialLogo} ${style.whatsappLogo}`} aria-hidden="true">WA</span>
+                                        WhatsApp
+                                    </button>
+                                    <button type="button" onClick={() => {
+                                        const { url, text } = getShareData();
+                                        openShareUrl(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(text)}`);
+                                    }}>
+                                        <span className={`${style.socialLogo} ${style.facebookLogo}`} aria-hidden="true">f</span>
+                                        Facebook
+                                    </button>
+                                    <button type="button" onClick={() => shareNative('https://www.instagram.com/')}>
+                                        <span className={`${style.socialLogo} ${style.instagramLogo}`} aria-hidden="true">◎</span>
+                                        Instagram
+                                    </button>
+                                    <button type="button" onClick={() => shareNative('https://www.instagram.com/stories/')}>
+                                        <span className={`${style.socialLogo} ${style.storiesLogo}`} aria-hidden="true">✦</span>
+                                        Historias
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                         {!!data.codigo && (
                             <button type="button" className={style.shareBtn} onClick={copyCodigo}>
                                 📋 Copiar código
