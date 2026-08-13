@@ -25,8 +25,8 @@ const DownloadIcon = ({ all = false }) => (
     </svg>
 );
 
-const SocialIcon = ({ src }) => (
-    <img className="socialLogo" src={src} alt="" aria-hidden="true" />
+const SocialIcon = ({ src, className }) => (
+    <img className={className} src={src} alt="" aria-hidden="true" />
 );
 
 const fileNameFromPath = (path, fallback) => {
@@ -327,33 +327,33 @@ export const DetailModal = ({ ls }) => {
                                                 const { text } = getShareData();
                                                 openShareUrl(`https://wa.me/?text=${encodeURIComponent(text)}`);
                                             }}>
-                                                <SocialIcon src={whatsappIcon} />
+                                                <SocialIcon src={whatsappIcon} className={style.socialLogo} />
                                                 WhatsApp
                                             </button>
                                             <button type="button" onClick={() => {
                                                 const { url, text } = getShareData();
                                                 openShareUrl(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(text)}`);
                                             }}>
-                                                <SocialIcon src={facebookIcon} />
+                                                <SocialIcon src={facebookIcon} className={style.socialLogo} />
                                                 Facebook
                                             </button>
                                             <button type="button" onClick={() => shareNative('https://www.instagram.com/')}>
-                                                <SocialIcon src={instagramIcon} />
+                                                <SocialIcon src={instagramIcon} className={style.socialLogo} />
                                                 Instagram
                                             </button>
                                             <button type="button" onClick={() => {
                                                 const { text } = getShareData();
                                                 openShareUrl(`whatsapp://send?text=${encodeURIComponent(text)}`);
                                             }}>
-                                                <SocialIcon src={whatsappIcon} />
+                                                <SocialIcon src={whatsappIcon} className={style.socialLogo} />
                                                 Historia de WhatsApp
                                             </button>
                                             <button type="button" onClick={() => shareNative('https://www.facebook.com/')}>
-                                                <SocialIcon src={facebookIcon} />
+                                                <SocialIcon src={facebookIcon} className={style.socialLogo} />
                                                 Historia de Facebook
                                             </button>
                                             <button type="button" onClick={() => shareNative('https://www.instagram.com/')}>
-                                                <SocialIcon src={instagramIcon} />
+                                                <SocialIcon src={instagramIcon} className={style.socialLogo} />
                                                 Historia de Instagram
                                             </button>
                                         </div>

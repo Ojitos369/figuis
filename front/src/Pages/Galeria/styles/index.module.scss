@@ -531,7 +531,7 @@
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    padding: var(--sp-3);
+    padding: 0;
     background: rgba(0, 0, 0, 0.58);
     backdrop-filter: blur(3px);
     animation: shareFadeIn var(--t-fast);
@@ -540,9 +540,12 @@
 .shareSheet {
     width: 100%;
     max-width: 520px;
-    padding: var(--sp-2) var(--sp-4) var(--sp-5);
+    max-height: 58vh;
+    overflow-y: auto;
+    padding: var(--sp-2) var(--sp-3) calc(var(--sp-4) + env(safe-area-inset-bottom, 0px));
     border: 1px solid var(--border);
-    border-radius: var(--r-xl) var(--r-xl) var(--r-lg) var(--r-lg);
+    border-bottom: none;
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
     background: var(--surface-1);
     box-shadow: var(--shadow-lg);
     animation: shareSlideUp var(--t-slow);
@@ -560,7 +563,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: var(--sp-3);
+    margin-bottom: var(--sp-2);
 
     h2 {
         margin: 0;
@@ -589,8 +592,8 @@
         display: flex;
         align-items: center;
         gap: var(--sp-2);
-        min-height: 48px;
-        padding: 0.65rem 0.75rem;
+        min-height: 52px;
+        padding: 0.45rem 0.6rem;
         border: 1px solid var(--border);
         border-radius: var(--r-md);
         background: var(--surface-2);
@@ -654,9 +657,9 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
-    flex: 0 0 24px;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
     border-radius: 50%;
     object-fit: contain;
     color: #fff;
