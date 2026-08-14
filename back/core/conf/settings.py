@@ -9,6 +9,11 @@ setproctitle.setproctitle('figuis-py')
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 MEDIA_DIR = os.path.join(BASE_DIR, 'media')
 PUBLIC_BASE_URL = os.environ.get('PUBLIC_BASE_URL', '').rstrip('/')
+HOME_PREVIEW_CAPTURE_URL = os.environ.get(
+    'HOME_PREVIEW_CAPTURE_URL',
+    f'{PUBLIC_BASE_URL}/?social_capture=1' if PUBLIC_BASE_URL else 'http://127.0.0.1:8000/?social_capture=1',
+)
+HOME_PREVIEW_REFRESH_SECONDS = int(os.environ.get('HOME_PREVIEW_REFRESH_SECONDS', '3600'))
 prod_mode = True if str(os.environ.get('RUN_PROD_MODE', True)).title() == 'True' else False
 dev_mode = True if str(os.environ.get('RUN_DEV_MODE', False)).title() == 'True' else False
 

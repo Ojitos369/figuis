@@ -6,6 +6,7 @@ import struct
 from core.bases.apis import AdminApi, pln
 from core.bases.utils import CODIGO_EXPR
 from core.conf.settings import MEDIA_DIR
+from core.home_preview import schedule_home_preview_refresh
 from core.social_preview import generate_social_preview, remove_social_preview
 
 
@@ -260,6 +261,7 @@ class SaveFigura(AdminApi):
                 )
 
         self.conexion.commit()
+        schedule_home_preview_refresh()
         self.response = {"id": id_figura}
 
 
@@ -281,6 +283,7 @@ class DeleteFigura(AdminApi):
             self.conexion.rollback()
             raise self.MYE("Error al eliminar la figura")
         self.conexion.commit()
+        schedule_home_preview_refresh()
         self.response = {"id": id}
 
 
@@ -327,6 +330,7 @@ class SaveFiguraArchivo(AdminApi):
         self.conexion.commit()
         if tipo == "resultado":
             refresh_social_preview(self.conexion, figura_id)
+        schedule_home_preview_refresh()
         self.response = {"id": id_archivo, "url": archivo_url, "tipo": tipo}
 
 
@@ -358,6 +362,7 @@ class DeleteFiguraArchivo(AdminApi):
         self.conexion.commit()
         if figura_id and tipo == "resultado":
             refresh_social_preview(self.conexion, figura_id)
+        schedule_home_preview_refresh()
         self.response = {"id": id_archivo}
 
 

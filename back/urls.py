@@ -10,6 +10,7 @@ from apis.urls import apis, media
 from core.bases.utils import ClassBase
 from core.bases.utils import CODIGO_EXPR
 from core.conf.settings import MEDIA_DIR, PUBLIC_BASE_URL
+from core.home_preview import HOME_PREVIEW_RELATIVE_PATH, home_preview_path
 from core.social_preview import generate_social_preview
 
 urls_router = APIRouter()
@@ -48,9 +49,28 @@ async def read_index(request: Request):
     with open(f"{MEDIA_DIR}/dist/index.html") as f:
         html_content = f.read()
     base = public_base_url(request)
+    preview_file = home_preview_path()
+    image_meta = ""
+    if preview_file.is_file():
+        image_url = f"{base}/media/{HOME_PREVIEW_RELATIVE_PATH}?v={int(preview_file.stat().st_mtime)}"
+        safe_image = html.escape(image_url, quote=True)
+        image_meta = (
+            f'<meta property="og:image" content="{safe_image}" />\n'
+            f'    <meta property="og:image:secure_url" content="{safe_image}" />\n'
+            '    <meta property="og:image:type" content="image/jpeg" />\n'
+            '    <meta property="og:image:width" content="1200" />\n'
+            '    <meta property="og:image:height" content="630" />\n'
+            '    <meta property="og:image:alt" content="Vista actual del catálogo de Figuis" />\n'
+            f'    <meta name="twitter:image" content="{safe_image}" />'
+        )
+        html_content = html_content.replace(
+            '<meta name="twitter:card" content="summary" />',
+            '<meta name="twitter:card" content="summary_large_image" />',
+        )
     root_meta = (
         f'<link rel="canonical" href="{html.escape(base, quote=True)}/" />\n'
-        f'    <meta property="og:url" content="{html.escape(base, quote=True)}/" />'
+        f'    <meta property="og:url" content="{html.escape(base, quote=True)}/" />\n'
+        f'    {image_meta}'
     )
     html_content = html_content.replace("</head>", f"    {root_meta}\n</head>")
     return HTMLResponse(content=html_content, headers={"Cache-Control": "public, max-age=300"})

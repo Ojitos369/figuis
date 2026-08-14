@@ -1,11 +1,32 @@
+import asyncio
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from urls import urls_router, add_404_handler
 
-from core.conf.settings import allow_origins, allow_origin_regex, allow_credentials, allow_methods, allow_headers, MEDIA_DIR
+from core.conf.settings import allow_origins, allow_origin_regex, allow_credentials, allow_methods, allow_headers, MEDIA_DIR, HOME_PREVIEW_REFRESH_SECONDS
+from core.home_preview import generate_home_preview
 
-app = FastAPI()
+
+async def refresh_home_preview_loop():
+    await asyncio.sleep(5)
+    while True:
+        await asyncio.to_thread(generate_home_preview)
+        await asyncio.sleep(max(HOME_PREVIEW_REFRESH_SECONDS, 300))
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    preview_task = asyncio.create_task(refresh_home_preview_loop())
+    try:
+        yield
+    finally:
+        preview_task.cancel()
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware, 

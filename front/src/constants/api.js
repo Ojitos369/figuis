@@ -5,7 +5,7 @@
 // Nada de esto queda como URL fija en el bundle: se resuelve en tiempo de carga
 // con window.location, asi que migrate_view.py no tiene nada de "localhost:puerto"
 // que recortar (evita que la vista migrada quede apuntando a un puerto muerto).
-const BACK_PORTS = ['8369', '8372'];
+const BACK_PORTS = ['8000', '8369', '8372'];
 const DEFAULT_DEV_PORT = '8369';
 
 const { protocol, hostname, port: currentPort } = window.location;

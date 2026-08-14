@@ -14,7 +14,7 @@ ENV PYTHONUNBUFFERED 1
 # DEPENDENCIES
 RUN apt-get update && apt-get upgrade -y
 RUN apt-get install -y \
-    curl git zsh neovim wget unzip cron locales tzdata supervisor htop
+    curl git zsh neovim wget unzip cron locales tzdata supervisor htop chromium
 
 # ZSH 
 RUN apt install git neovim curl zsh -y
@@ -49,4 +49,3 @@ WORKDIR $APPINSTALL
 # docker start figuis-py
 # docker rm -f figuis-py && docker image rm figuis-web && docker network rm figuis-netp && docker compose up -d
 # docker rm -f figuis-py && docker image rm figuis-web && docker compose up -d
-
