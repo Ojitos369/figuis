@@ -13,6 +13,11 @@ const IconTag = (
         <path d="M20.6 12.6 12 21.2 2.8 12 11.4 3.4 20.6 3.4Z" /><circle cx="7.5" cy="7.5" r="1.2" />
     </svg>
 );
+const IconShield = (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+    </svg>
+);
 const IconExit = (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5" /><path d="M21 12H9" />
@@ -37,6 +42,7 @@ export const SideBarAdmin = () => {
     const elementos = [
         { name: 'Figuras', to: '/admin/figuras', icon: IconBox, match: 'figuras' },
         { name: 'Etiquetas', to: '/admin/etiquetas', icon: IconTag, match: 'etiquetas' },
+        { name: 'Sesiones', to: '/admin/sesiones', icon: IconShield, match: 'sesiones' },
     ];
 
     const logout = () => {

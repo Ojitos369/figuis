@@ -10,6 +10,7 @@ import { AdminGuard } from '../Pages/Admin/AdminGuard';
 import { AdminLogin } from '../Pages/Admin/Login';
 import { AdminFiguras } from '../Pages/Admin/Figuras';
 import { AdminEtiquetas } from '../Pages/Admin/Etiquetas';
+import { AdminSesiones } from '../Pages/Admin/Sesiones';
 
 import { store } from './store';
 import { Provider } from "react-redux";
@@ -53,6 +54,7 @@ function AppUI() {
                         <Route path="" element={<AdminFiguras />} />
                         <Route path="figuras" element={<AdminFiguras />} />
                         <Route path="etiquetas" element={<AdminEtiquetas />} />
+                        <Route path="sesiones" element={<AdminSesiones />} />
                         <Route path="*" element={<P404 />} />
                     </Route>
 

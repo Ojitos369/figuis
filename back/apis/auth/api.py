@@ -1,8 +1,20 @@
-import datetime
-
-from core.bases.apis import BaseApi, NoSession, AdminApi, pln
-from core.conf.settings import SESSION_HOURS
+from core.bases.apis import BaseApi, NoSession, pln
+from core.conf.settings import COOKIE_NAME, prod_mode
 from core.utils.security import check_password
+
+
+def set_session_cookie(response_obj, token):
+    # Sin max_age/expires: cookie de sesion (el navegador la borra al
+    # cerrarse). La vigencia real la maneja unicamente la tabla `sesiones`
+    # -no expira sola, se cierra a mano (logout o revocacion desde el panel).
+    response_obj.set_cookie(
+        key=COOKIE_NAME,
+        value=token,
+        httponly=True,
+        secure=prod_mode,
+        samesite="lax",
+        path="/",
+    )
 
 
 class Login(NoSession, BaseApi):
@@ -25,31 +37,61 @@ class Login(NoSession, BaseApi):
             raise self.MYE("Usuario o contraseña incorrectos")
 
         token = self.get_id()
-        expires_at = datetime.datetime.now() + datetime.timedelta(hours=SESSION_HOURS)
         self.conexion.ejecutar(
-            "INSERT INTO sesiones (id, token, usuario_id, expires_at) VALUES (:id, :token, :usuario_id, :expires_at)",
-            {"id": self.get_id(), "token": token, "usuario_id": row["id"], "expires_at": expires_at}
+            "INSERT INTO sesiones (id, token, usuario_id) VALUES (:id, :token, :usuario_id)",
+            {"id": self.get_id(), "token": token, "usuario_id": row["id"]}
         )
         self.conexion.commit()
 
+        set_session_cookie(self.response_obj, token)
         self.response = {
             "user": {"id": row["id"], "usuario": row["usuario"], "nombre": row["nombre"]},
-            "token": token
         }
 
 
-class ValidateLogin(AdminApi):
+class ValidateLogin(BaseApi):
     def main(self):
         res = self.conexion.consulta_asociativa(
             "SELECT id, usuario, nombre FROM usuarios WHERE id = :id",
             {"id": self.usuario_id}
         )
         user = self.d2d(res)[0] if not res.empty else {}
-        self.response = {"user": user, "token": self.token}
+        self.response = {"user": user}
 
 
-class CloseSession(AdminApi):
+class CloseSession(BaseApi):
+    """Cierra la sesion actual (la del propio token con el que se llama)."""
     def main(self):
         self.conexion.ejecutar("DELETE FROM sesiones WHERE token = :token", {"token": self.token})
         self.conexion.commit()
+        if self.response_obj is not None:
+            self.response_obj.delete_cookie(key=COOKIE_NAME, path="/")
         self.response = {"ok": True}
+
+
+class GetSesiones(BaseApi):
+    """Lista las sesiones abiertas (todas, de cualquier admin) para el panel."""
+    def main(self):
+        self.show_me()
+        res = self.conexion.consulta_asociativa(
+            """
+            SELECT s.id, u.usuario, u.nombre, s.created_at, (s.token = :token) as actual
+            FROM sesiones s
+            JOIN usuarios u ON u.id = s.usuario_id
+            ORDER BY s.created_at DESC
+            """,
+            {"token": self.token}
+        )
+        self.response = {"data": self.d2d(res)}
+
+
+class CloseSesionAdmin(BaseApi):
+    """Revoca cualquier sesion abierta por id (panel de admin)."""
+    def main(self):
+        self.show_me()
+        id_sesion = self.data.get("id")
+        if not id_sesion:
+            raise self.MYE("Falta id de sesión")
+        self.conexion.ejecutar("DELETE FROM sesiones WHERE id = :id", {"id": id_sesion})
+        self.conexion.commit()
+        self.response = {"id": id_sesion}

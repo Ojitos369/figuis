@@ -28,9 +28,10 @@ class NoSession:
 class BaseApi(ClassBase):
     def __init__(self, *args, **kwargs):
         self.request = kwargs.get('request', None)
+        self.response_obj = kwargs.get('response', None)
         self.data = {}
         for key, value in kwargs.items():
-            if key != "request":
+            if key not in ("request", "response"):
                 self.data[key] = value
         if args:
             self.data['args'] = args
@@ -84,12 +85,34 @@ class BaseApi(ClassBase):
             self.data[key] = value
 
     def validate_session(self):
+        """Valida la sesion contra la tabla `sesiones` (join `usuarios`).
+        Las sesiones no expiran solas (no hay chequeo de `expires_at`): viven
+        hasta que el usuario cierra sesion o un admin la revoca a mano desde
+        el panel de sesiones abiertas."""
         cookies = self.request.cookies
         mi_cookie = cookies.get(COOKIE_NAME, '')
         auth_code = self.request.headers.get("authorization", None)
-        self.token = mi_cookie or auth_code
-        if not self.token:
+        token = mi_cookie or auth_code
+        if not token:
             raise self.MYE("Sesion no valida")
+
+        res = self.conexion.consulta_asociativa(
+            """
+            SELECT s.id as sesion_id, s.usuario_id, u.usuario, u.nombre
+            FROM sesiones s
+            JOIN usuarios u ON u.id = s.usuario_id
+            WHERE s.token = :token AND u.activo = true
+            """,
+            {"token": token}
+        )
+        if res.empty:
+            raise self.MYE("Sesion expirada o invalida")
+
+        row = res.iloc[0].to_dict()
+        self.token = token
+        self.sesion_id = row["sesion_id"]
+        self.usuario_id = row["usuario_id"]
+        self.usuario_nombre = row.get("nombre")
 
     def validar_permiso(self, usuarios_validos):
         pass
@@ -124,34 +147,6 @@ class BaseApi(ClassBase):
             self.errors(e)
         finally:
             self.close_conexion()
-
-
-class AdminApi(BaseApi):
-    """Requiere una sesion de administrador valida (tabla `sesiones`, no expirada)."""
-    def validate_session(self):
-        cookies = self.request.cookies
-        mi_cookie = cookies.get(COOKIE_NAME, '')
-        auth_code = self.request.headers.get("authorization", None)
-        token = mi_cookie or auth_code
-        if not token:
-            raise self.MYE("Sesion no valida")
-
-        res = self.conexion.consulta_asociativa(
-            """
-            SELECT s.usuario_id, u.usuario, u.nombre
-            FROM sesiones s
-            JOIN usuarios u ON u.id = s.usuario_id
-            WHERE s.token = :token AND s.expires_at > NOW() AND u.activo = true
-            """,
-            {"token": token}
-        )
-        if res.empty:
-            raise self.MYE("Sesion expirada o invalida")
-
-        row = res.iloc[0].to_dict()
-        self.token = token
-        self.usuario_id = row["usuario_id"]
-        self.usuario_nombre = row.get("nombre")
 
 
 class PostApi(BaseApi):

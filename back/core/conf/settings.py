@@ -36,7 +36,6 @@ db_data = {
     "port": os.environ.get('DB_PORT', '5442'),
 }
 
-SESSION_HOURS = 12
 COOKIE_NAME = "figuis"
 
 # ----------------------   EMAIL   ----------------------

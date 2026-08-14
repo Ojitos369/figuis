@@ -39,14 +39,17 @@ CREATE TABLE IF NOT EXISTS usuarios (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Las sesiones no expiran solas: viven hasta que el usuario cierra sesion o
+-- un admin las revoca a mano desde el panel de sesiones abiertas.
 CREATE TABLE IF NOT EXISTS sesiones (
     id VARCHAR(50) PRIMARY KEY,
     token VARCHAR(100) UNIQUE NOT NULL,
     usuario_id VARCHAR(50) REFERENCES usuarios(id) ON DELETE CASCADE,
-    expires_at TIMESTAMP NOT NULL,
     created_at TIMESTAMP DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_sesiones_token ON sesiones(token);
+-- Migracion para DBs ya creadas con la columna `expires_at` vieja:
+ALTER TABLE sesiones DROP COLUMN IF EXISTS expires_at;
 
 -- -------------------   ETIQUETAS   -------------------
 CREATE TABLE IF NOT EXISTS etiquetas (

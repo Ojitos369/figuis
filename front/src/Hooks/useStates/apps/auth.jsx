@@ -1,16 +1,8 @@
+// El token vive en una cookie httponly que pone el server (Set-Cookie en
+// login/close_session): el JS del front nunca la lee ni la escribe, solo
+// depende de axios mandandola sola via withCredentials.
 export const auth = props => {
-    const { miAxios, pjid, s, u1, u2, urs, notificacion } = props;
-
-    const setCookie = (token, hours) => {
-        const date = new Date();
-        date.setTime(date.getTime() + (1000 * 60 * 60 * hours));
-        const expires = 'expires=' + date.toUTCString();
-        document.cookie = `${pjid}=${token};${expires};path=/`;
-    };
-
-    const clearCookie = () => {
-        document.cookie = `${pjid}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/`;
-    };
+    const { miAxios, s, u1, u2, urs, notificacion } = props;
 
     const login = (usuario, passwd, onSuccess) => {
         if (s.loadings?.auth?.login) return;
@@ -19,12 +11,11 @@ export const auth = props => {
         const url = "auth/login";
         miAxios.post(url, { usuario, passwd })
             .then(response => {
-                const { user, token } = response.data;
+                const { user } = response.data;
                 u2("auth", "form", "usuario", "");
                 u2("auth", "form", "passwd", "");
                 u1("auth", "logged", true);
                 u1("auth", "usuario", user);
-                setCookie(token, 12);
                 if (onSuccess) onSuccess(user);
             })
             .catch(error => {
@@ -43,15 +34,13 @@ export const auth = props => {
         u2("loadings", "auth", "validateLogin", true);
         miAxios.get("auth/validate_login")
             .then(res => {
-                const { user, token } = res.data;
-                setCookie(token, 5);
+                const { user } = res.data;
                 u1("auth", "logged", true);
                 u1("auth", "usuario", user);
                 if (onDone) onDone(true);
             })
             .catch(() => {
                 u1("auth", "logged", false);
-                clearCookie();
                 if (onDone) onDone(false);
             })
             .finally(() => {
@@ -64,7 +53,6 @@ export const auth = props => {
             miAxios.get("auth/close_session").catch(() => {});
         }
         urs();
-        clearCookie();
     };
 
     return {

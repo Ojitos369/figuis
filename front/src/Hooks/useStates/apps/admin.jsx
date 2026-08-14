@@ -93,9 +93,24 @@ export const admin = props => {
             .catch(err => notifyError(err, "No se pudo eliminar la etiqueta"));
     };
 
+    const getSesiones = () => {
+        u2("loadings", "admin", "sesiones", true);
+        miAxios.get("auth/sesiones")
+            .then(res => u1("admin", "sesiones", res.data.data || []))
+            .catch(err => notifyError(err, "No se pudieron cargar las sesiones"))
+            .finally(() => u2("loadings", "admin", "sesiones", false));
+    };
+
+    const closeSesion = (id, onDone) => {
+        miAxios.delete("auth/sesiones", { params: { id } })
+            .then(res => { if (onDone) onDone(res.data); })
+            .catch(err => notifyError(err, "No se pudo cerrar la sesión"));
+    };
+
     return {
         getFiguras, getFigura, saveFigura, deleteFigura,
         saveFiguraArchivo, deleteFiguraArchivo,
         saveEtiqueta, deleteEtiqueta,
+        getSesiones, closeSesion,
     };
 };

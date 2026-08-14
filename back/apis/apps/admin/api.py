@@ -3,7 +3,7 @@ import json
 import re
 import struct
 
-from core.bases.apis import AdminApi, pln
+from core.bases.apis import BaseApi, pln
 from core.bases.utils import CODIGO_EXPR
 from core.conf.settings import MEDIA_DIR
 from core.home_preview import schedule_home_preview_refresh
@@ -44,7 +44,7 @@ def stl_esta_completo(contents: bytes) -> bool:
     return contents[:5].lower() == b'solid' and b'endsolid' in tail
 
 
-class GetFigurasAdmin(AdminApi):
+class GetFigurasAdmin(BaseApi):
     ORDEN_MAP = {
         "nombre_asc": "f.nombre ASC",
         "nombre_desc": "f.nombre DESC",
@@ -174,7 +174,7 @@ class GetFigurasAdmin(AdminApi):
                 self.query_data["reacciones_emojis"] = emojis
 
 
-class GetFiguraAdmin(AdminApi):
+class GetFiguraAdmin(BaseApi):
     def main(self):
         self.show_me()
         id = self.data["id"]
@@ -209,7 +209,7 @@ class GetFiguraAdmin(AdminApi):
         self.response = {"data": figura}
 
 
-class SaveFigura(AdminApi):
+class SaveFigura(BaseApi):
     def main(self):
         self.show_me()
         id_figura = self.data.get("id", None) or self.get_id()
@@ -265,7 +265,7 @@ class SaveFigura(AdminApi):
         self.response = {"id": id_figura}
 
 
-class DeleteFigura(AdminApi):
+class DeleteFigura(BaseApi):
     def main(self):
         self.show_me()
         id = self.data["id"]
@@ -287,7 +287,7 @@ class DeleteFigura(AdminApi):
         self.response = {"id": id}
 
 
-class SaveFiguraArchivo(AdminApi):
+class SaveFiguraArchivo(BaseApi):
     def main(self):
         self.show_me()
         figura_id = self.data.get("figura_id")
@@ -334,7 +334,7 @@ class SaveFiguraArchivo(AdminApi):
         self.response = {"id": id_archivo, "url": archivo_url, "tipo": tipo}
 
 
-class DeleteFiguraArchivo(AdminApi):
+class DeleteFiguraArchivo(BaseApi):
     def main(self):
         self.show_me()
         id_archivo = self.data.get("id")
@@ -366,7 +366,7 @@ class DeleteFiguraArchivo(AdminApi):
         self.response = {"id": id_archivo}
 
 
-class SaveEtiqueta(AdminApi):
+class SaveEtiqueta(BaseApi):
     def main(self):
         self.show_me()
         id_etiqueta = self.data.get("id", None)
@@ -403,7 +403,7 @@ class SaveEtiqueta(AdminApi):
         self.response = {"id": id_etiqueta, "nombre": nombre, "color": color, "existed": False}
 
 
-class DeleteEtiqueta(AdminApi):
+class DeleteEtiqueta(BaseApi):
     def main(self):
         self.show_me()
         id = self.data["id"]
