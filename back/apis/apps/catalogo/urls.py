@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request
-from .api import DownloadFiguraMedia, GetFiguras, GetFigura, GetEtiquetas, GetReacciones, ToggleReaccion
+from .api import DownloadFiguraMedia, GetFiguras, GetFiguraPagina, GetFigura, GetEtiquetas, GetReacciones, ToggleReaccion
 
 router = APIRouter()
 
@@ -7,6 +7,12 @@ router = APIRouter()
 @router.get("/figuras")
 async def get_figuras(request: Request):
     r = await GetFiguras(request=request).run()
+    return r
+
+
+@router.get("/figuras/pagina")
+async def get_figuras_pagina(request: Request):
+    r = await GetFiguraPagina(request=request).run()
     return r
 
 

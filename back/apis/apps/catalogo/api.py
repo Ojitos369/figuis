@@ -5,7 +5,7 @@ import uuid
 import zipfile
 
 from core.bases.apis import BaseApi, NoSession, pln
-from core.bases.utils import CODIGO_EXPR
+from core.bases.utils import CODIGO_EXPR, CODIGO_LEGACY_EXPR
 from core.conf.settings import MEDIA_DIR
 from fastapi.responses import StreamingResponse
 
@@ -27,14 +27,30 @@ class DownloadFiguraMedia(NoSession, BaseApi):
         if figura.empty:
             raise self.MYE("Figura no encontrada")
 
+        archivo_ids = []
+        for raw_id in str(self.data.get("archivos") or "").split(","):
+            raw_id = raw_id.strip()
+            if not raw_id:
+                continue
+            try:
+                archivo_ids.append(str(uuid.UUID(raw_id)))
+            except ValueError:
+                continue
+
+        params = {"id": figura_id}
+        filtro_ids = ""
+        if archivo_ids:
+            filtro_ids = "AND id = ANY(:archivo_ids::uuid[])"
+            params["archivo_ids"] = archivo_ids
+
         archivos = self.conexion.consulta_asociativa(
-            """
+            f"""
             SELECT archivo_url, tipo
             FROM figura_archivos
-            WHERE figura_id = :id AND tipo IN ('resultado', 'relacionado')
+            WHERE figura_id = :id AND tipo IN ('resultado', 'relacionado') {filtro_ids}
             ORDER BY tipo ASC, orden ASC, created_at ASC
             """,
-            {"id": figura_id},
+            params,
         )
 
         buffer = io.BytesIO()
@@ -168,14 +184,15 @@ class GetFiguras(NoSession, BaseApi):
             if is_regex:
                 # ~* = regex posix, sin distinguir mayusculas. Busca en nombre,
                 # descripcion, id y codigo corto (para poder pegar/buscar un
-                # id o codigo directo).
-                self.filtros += f" AND (f.nombre ~* :q OR f.descripcion ~* :q OR f.id::text ~* :q OR {CODIGO_EXPR} ~* :q)\n"
+                # id o codigo directo, tanto el alfanumerico actual como el
+                # numerico legacy de codigos ya compartidos antes del cambio).
+                self.filtros += f" AND (f.nombre ~* :q OR f.descripcion ~* :q OR f.id::text ~* :q OR {CODIGO_EXPR} ~* :q OR {CODIGO_LEGACY_EXPR} ~* :q)\n"
                 self.query_data["q"] = q
             else:
                 # el texto no es un regex valido (parentesis sueltos, etc):
                 # se cae a busqueda de substring normal, sin tronar la consulta.
                 q_like = q.lower()
-                self.filtros += f" AND (LOWER(f.nombre) LIKE :q OR LOWER(f.descripcion) LIKE :q OR LOWER(f.id::text) LIKE :q OR {CODIGO_EXPR} LIKE :q)\n"
+                self.filtros += f" AND (LOWER(f.nombre) LIKE :q OR LOWER(f.descripcion) LIKE :q OR LOWER(f.id::text) LIKE :q OR LOWER({CODIGO_EXPR}) LIKE :q OR {CODIGO_LEGACY_EXPR} LIKE :q)\n"
                 self.query_data["q"] = f"%{q_like}%"
 
         desde = self.data.get("desde", None)
@@ -209,6 +226,49 @@ class GetFiguras(NoSession, BaseApi):
                 self.joins += " JOIN figura_reacciones fr_filter ON fr_filter.figura_id = f.id\n"
                 self.filtros += " AND fr_filter.emoji = ANY(:reacciones_emojis::text[])\n"
                 self.query_data["reacciones_emojis"] = emojis
+
+
+class GetFiguraPagina(GetFiguras):
+    """Dado un id de figura y el orden/filtros actuales, calcula en que
+    pagina cae dentro del listado paginado (para abrir el detalle desde
+    cero -p. ej. nueva pestana- en la pagina que le corresponde en vez de
+    la 1)."""
+
+    def main(self):
+        self.show_me()
+        self.get_filtros()
+
+        figura_id = self.data.get("id")
+
+        limit = self.data.get("limit", 24)
+        try: limit = int(limit)
+        except Exception: limit = 24
+
+        orden_sql = self.ORDEN_MAP.get(self.data.get("orden"), self.ORDEN_MAP["fecha_desc"])
+
+        query = f"""
+        WITH ordered AS (
+            SELECT f.id,
+                (SELECT COUNT(*) FROM figura_etiquetas fe3 WHERE fe3.figura_id = f.id) as num_etiquetas,
+                (SELECT COUNT(*) FROM figura_archivos fa3 WHERE fa3.figura_id = f.id) as num_media,
+                (SELECT COUNT(*) FROM figura_reacciones fr2 WHERE fr2.figura_id = f.id) as num_reacciones,
+                ROW_NUMBER() OVER (ORDER BY {orden_sql}) as rn
+            FROM figuras f
+            {self.joins}
+            WHERE f.estatus = 'publico' {self.filtros}
+            GROUP BY f.id
+        )
+        SELECT rn FROM ordered WHERE id = :id
+        """
+        query_data = {**self.query_data, "id": figura_id}
+        res = self.conexion.consulta_asociativa(query, query_data)
+        if res.empty:
+            self.response = {"data": None}
+            return
+
+        rn = int(res.iloc[0]["rn"])
+        page = ((rn - 1) // limit) + 1 if limit > 0 else 1
+        self.response = {"data": {"page": page, "position": rn}}
 
 
 class GetFigura(NoSession, BaseApi):

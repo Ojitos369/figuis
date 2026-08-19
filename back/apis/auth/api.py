@@ -1,12 +1,14 @@
 from core.bases.apis import BaseApi, NoSession, pln
-from core.conf.settings import COOKIE_NAME, prod_mode
+from core.conf.settings import COOKIE_NAME, COOKIE_MAX_AGE, prod_mode
 from core.utils.security import check_password
 
 
 def set_session_cookie(response_obj, token):
-    # Sin max_age/expires: cookie de sesion (el navegador la borra al
-    # cerrarse). La vigencia real la maneja unicamente la tabla `sesiones`
-    # -no expira sola, se cierra a mano (logout o revocacion desde el panel).
+    # max_age hace que el cookie persista aunque se reinicie el navegador.
+    # La vigencia real la sigue manejando unicamente la tabla `sesiones`
+    # -no expira sola, se cierra a mano (logout o revocacion desde el panel)-
+    # pero sin max_age el navegador la trataba como cookie de sesion y la
+    # borraba al cerrarse, forzando a re-loguear en cada reinicio.
     response_obj.set_cookie(
         key=COOKIE_NAME,
         value=token,
@@ -14,6 +16,7 @@ def set_session_cookie(response_obj, token):
         secure=prod_mode,
         samesite="lax",
         path="/",
+        max_age=COOKIE_MAX_AGE,
     )
 
 

@@ -1,14 +1,20 @@
+import { Link, useLocation } from 'react-router-dom';
 import { Tag } from '../../../Components/Tag';
 import { MediaThumb } from '../../../Components/MediaThumb';
 import { ReactionSummary } from '../../../Components/ReactionSummary';
 
 export const FigCard = ({ figura, style, onOpen, enterDelay = 0 }) => {
+    const location = useLocation();
     return (
-        <button
-            type="button"
+        <Link
+            to={`/figura/${figura.id}${location.search}`}
             className={`${style.figCard} ${style.figCardIn}`}
             style={{ animationDelay: `${enterDelay}ms` }}
-            onClick={() => onOpen(figura.id)}
+            onClick={(e) => {
+                if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button === 1) return;
+                e.preventDefault();
+                onOpen(figura.id);
+            }}
         >
             <div className={style.figThumb}>
                 {figura.portada
@@ -35,6 +41,6 @@ export const FigCard = ({ figura, style, onOpen, enterDelay = 0 }) => {
                     <ReactionSummary reacciones={figura.reacciones_top} />
                 </div>
             </div>
-        </button>
+        </Link>
     );
 };

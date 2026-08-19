@@ -12,9 +12,9 @@ export const Galeria = () => {
     return (
         <div className={ls.style.galeriaPage}>
             <PageHeader ls={ls} />
-            <Pagination pagination={ls.pagination} onChange={ls.setPage} />
+            <Pagination pagination={ls.pagination} onChange={ls.setPage} getHref={ls.getPageHref} />
             <FigurasGrid ls={ls} />
-            <Pagination pagination={ls.pagination} onChange={ls.setPage} />
+            <Pagination pagination={ls.pagination} onChange={ls.setPage} getHref={ls.getPageHref} />
             <DetailModal ls={ls} />
             <FiltersSheet ls={ls} />
         </div>

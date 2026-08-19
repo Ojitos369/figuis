@@ -7,7 +7,8 @@ import { MediaThumb } from '../../../Components/MediaThumb';
 import { MediaViewer } from '../../../Components/MediaViewer';
 import { ReactionBar } from '../../../Components/ReactionBar';
 import { ErrorBoundary } from '../../../Components/ErrorBoundary';
-import { LINK_API_PORT, mediaUrl } from '../../../constants/api';
+import { DownloadSelectSheet } from './DownloadSelectSheet';
+import { mediaUrl } from '../../../constants/api';
 import facebookIcon from '../../../assets/social/facebook.svg';
 import instagramIcon from '../../../assets/social/instagram.svg';
 import whatsappIcon from '../../../assets/social/whatsapp.svg';
@@ -39,9 +40,8 @@ export const DetailModal = ({ ls }) => {
     const { style, id, figuraActual, loadingDetail, closeDetail } = ls;
     const [activeIdx, setActiveIdx] = useState(0);
     const [show3D, setShow3D] = useState(false);
-    const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
     const [shareMenuOpen, setShareMenuOpen] = useState(false);
-    const [downloadingMultiple, setDownloadingMultiple] = useState(false);
+    const [selectSheetOpen, setSelectSheetOpen] = useState(false);
 
     const open = !!id;
     const isLogged = s.auth?.logged === true;
@@ -55,9 +55,8 @@ export const DetailModal = ({ ls }) => {
     useEffect(() => {
         setActiveIdx(0);
         setShow3D(false);
-        setDownloadMenuOpen(false);
         setShareMenuOpen(false);
-        setDownloadingMultiple(false);
+        setSelectSheetOpen(false);
     }, [id]);
 
     useEffect(() => {
@@ -170,23 +169,8 @@ export const DetailModal = ({ ls }) => {
         });
     };
 
-    const downloadMultiple = () => {
-        if (downloadingMultiple) return;
-        setDownloadMenuOpen(false);
-        setDownloadingMultiple(true);
-
-        gallery.forEach((archivo, index) => {
-            window.setTimeout(() => {
-                const link = document.createElement('a');
-                link.href = mediaUrl(archivo.archivo_url);
-                link.download = fileNameFromPath(archivo.archivo_url, `media-${index + 1}`);
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-
-                if (index === gallery.length - 1) setDownloadingMultiple(false);
-            }, index * 150);
-        });
+    const openSelectSheet = () => {
+        setSelectSheetOpen(true);
     };
 
     return (
@@ -260,35 +244,15 @@ export const DetailModal = ({ ls }) => {
                             >
                                 <DownloadIcon />
                             </a>
-                            <div className={style.downloadMenuWrap}>
-                                <button
-                                    type="button"
-                                    className={style.downloadBtn}
-                                    onClick={() => setDownloadMenuOpen(value => !value)}
-                                    title="Descargar todos los archivos del álbum"
-                                    aria-label="Descargar todos los archivos del álbum"
-                                    aria-expanded={downloadMenuOpen}
-                                >
-                                    <DownloadIcon all />
-                                </button>
-                                {downloadMenuOpen && (
-                                    <div className={style.downloadMenu}>
-                                        <a
-                                            href={`${LINK_API_PORT}/api/catalogo/figura/descargar?id=${encodeURIComponent(data.id)}`}
-                                            onClick={() => setDownloadMenuOpen(false)}
-                                        >
-                                            Descargar todos con ZIP
-                                        </a>
-                                        <button
-                                            type="button"
-                                            onClick={downloadMultiple}
-                                            disabled={downloadingMultiple}
-                                        >
-                                            {downloadingMultiple ? 'Descargando...' : 'Descargar todos individualmente'}
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
+                            <button
+                                type="button"
+                                className={style.downloadBtn}
+                                onClick={openSelectSheet}
+                                title="Elegir y descargar archivos del álbum"
+                                aria-label="Elegir y descargar archivos del álbum"
+                            >
+                                <DownloadIcon all />
+                            </button>
                         </div>
                     )}
 
@@ -377,6 +341,13 @@ export const DetailModal = ({ ls }) => {
                     {!!data.codigo && (
                         <div className={style.detailCodigo}>Código: #{data.codigo}</div>
                     )}
+
+                    <DownloadSelectSheet
+                        open={selectSheetOpen}
+                        onClose={() => setSelectSheetOpen(false)}
+                        figuraId={data.id}
+                        items={gallery}
+                    />
                 </div>
             )}
         </SheetModal>

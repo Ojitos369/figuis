@@ -19,6 +19,16 @@ export const catalogo = props => {
             });
     };
 
+    const getFiguraPagina = (id, params = {}, onDone) => {
+        miAxios.get("catalogo/figuras/pagina", { params: { ...params, id } })
+            .then(res => {
+                if (onDone) onDone(res.data.data);
+            })
+            .catch(() => {
+                if (onDone) onDone(null);
+            });
+    };
+
     const getFigura = (id, onDone) => {
         u2("loadings", "catalogo", "figura", true);
         u1("catalogo", "figuraActual", null);
@@ -60,5 +70,5 @@ export const catalogo = props => {
             });
     };
 
-    return { getFiguras, getFigura, getEtiquetas, getReacciones, toggleReaccion };
+    return { getFiguras, getFiguraPagina, getFigura, getEtiquetas, getReacciones, toggleReaccion };
 };

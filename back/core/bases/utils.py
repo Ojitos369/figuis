@@ -5,15 +5,20 @@ import datetime
 from ojitos369_postgres_db.postgres_db import ConexionPostgreSQL
 from core.conf.settings import MYE, ce, prod_mode, db_data
 
-# codigo corto de 6 digitos derivado del id (uuid): toma los primeros 6
-# caracteres hex del uuid, los interpreta como numero y los recorta a 6
-# digitos. Determinista (siempre el mismo codigo para el mismo id), no se
-# guarda en tabla, se calcula al vuelo en cada query. Requiere alias `f`
-# sobre la tabla `figuras` en el FROM de la query donde se use.
+# codigo corto alfanumerico derivado del id (uuid): son los primeros 6
+# caracteres hex del uuid (sin guiones), en mayusculas. Determinista
+# (siempre el mismo codigo para el mismo id), no se guarda en tabla, se
+# calcula al vuelo en cada query. Requiere alias `f` sobre la tabla
+# `figuras` en el FROM de la query donde se use.
+CODIGO_EXPR = "upper(left(replace(f.id::text,'-',''),6))"
+
+# codigo numerico "legacy": formula original (previa al cambio a codigo
+# alfanumerico) usada para los codigos ya compartidos antes del cambio.
+# Se mantiene solo para que esos codigos sigan siendo buscables.
 # OJO: %% (no %) - el driver hace %-formatting sobre el SQL final (convierte
 # :nombre a %(nombre)s), asi que un % suelto (el modulo aqui abajo) rompe el
 # parseo de parametros ("dict is not a sequence").
-CODIGO_EXPR = "lpad(((('x' || left(replace(f.id::text,'-',''),6))::bit(24)::int) %% 1000000)::text, 6, '0')"
+CODIGO_LEGACY_EXPR = "lpad(((('x' || left(replace(f.id::text,'-',''),6))::bit(24)::int) %% 1000000)::text, 6, '0')"
 
 class ClassBase:
     def create_conexion(self):

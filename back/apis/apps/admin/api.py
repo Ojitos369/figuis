@@ -4,7 +4,7 @@ import re
 import struct
 
 from core.bases.apis import BaseApi, pln
-from core.bases.utils import CODIGO_EXPR
+from core.bases.utils import CODIGO_EXPR, CODIGO_LEGACY_EXPR
 from core.conf.settings import MEDIA_DIR
 from core.home_preview import schedule_home_preview_refresh
 from core.social_preview import generate_social_preview, remove_social_preview
@@ -129,11 +129,11 @@ class GetFigurasAdmin(BaseApi):
                 is_regex = False
 
             if is_regex:
-                self.filtros += f" AND (f.nombre ~* :q OR f.descripcion ~* :q OR f.id::text ~* :q OR {CODIGO_EXPR} ~* :q)\n"
+                self.filtros += f" AND (f.nombre ~* :q OR f.descripcion ~* :q OR f.id::text ~* :q OR {CODIGO_EXPR} ~* :q OR {CODIGO_LEGACY_EXPR} ~* :q)\n"
                 self.query_data["q"] = q
             else:
                 q_like = q.lower()
-                self.filtros += f" AND (LOWER(f.nombre) LIKE :q OR LOWER(f.descripcion) LIKE :q OR LOWER(f.id::text) LIKE :q OR {CODIGO_EXPR} LIKE :q)\n"
+                self.filtros += f" AND (LOWER(f.nombre) LIKE :q OR LOWER(f.descripcion) LIKE :q OR LOWER(f.id::text) LIKE :q OR LOWER({CODIGO_EXPR}) LIKE :q OR {CODIGO_LEGACY_EXPR} LIKE :q)\n"
                 self.query_data["q"] = f"%{q_like}%"
 
         estatus = self.data.get("estatus", None)

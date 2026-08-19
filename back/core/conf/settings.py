@@ -37,6 +37,10 @@ db_data = {
 }
 
 COOKIE_NAME = "figuis"
+# La sesion en si no expira sola (ver `sesiones` en DB), pero el cookie debe
+# sobrevivir a un reinicio del navegador. 400 dias es el max_age tope que
+# aceptan Chrome/Firefox para cookies persistentes.
+COOKIE_MAX_AGE = 400 * 24 * 60 * 60
 
 # ----------------------   EMAIL   ----------------------
 port = os.environ.get('EMAIL_PORT', None)
