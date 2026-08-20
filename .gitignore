@@ -11,3 +11,7 @@ logs/*
 !/back/media/stay
 !/back/media/pages
 !/back/media/dist
+
+/backups/*
+!/backups/backup.sh
+!/backups/restore.sh
