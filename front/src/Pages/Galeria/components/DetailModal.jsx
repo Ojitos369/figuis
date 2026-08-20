@@ -7,6 +7,7 @@ import { MediaThumb } from '../../../Components/MediaThumb';
 import { MediaViewer } from '../../../Components/MediaViewer';
 import { ReactionBar } from '../../../Components/ReactionBar';
 import { ErrorBoundary } from '../../../Components/ErrorBoundary';
+import { Copy } from '../../../Components/Icons';
 import { DownloadSelectSheet } from './DownloadSelectSheet';
 import { mediaUrl } from '../../../constants/api';
 import facebookIcon from '../../../assets/social/facebook.svg';
@@ -152,6 +153,13 @@ export const DetailModal = ({ ls }) => {
         });
     };
 
+    const copyText = (text, label) => {
+        if (!text) return;
+        navigator.clipboard?.writeText(text)?.then(() => {
+            f.general.notificacion({ title: 'Listo', message: `${label} copiado al portapapeles`, mode: 'success' });
+        });
+    };
+
     const copyMetadata = () => {
         if (!isLogged || !data) return;
 
@@ -173,8 +181,17 @@ export const DetailModal = ({ ls }) => {
         setSelectSheetOpen(true);
     };
 
+    const modalTitle = data ? (
+        <span className={style.detailTitleWrap}>
+            <span className={style.detailTitleText}>{data.nombre}</span>
+            <button type="button" className={style.copyIconBtn} onClick={() => copyText(data.nombre, 'Título')} title="Copiar título" aria-label="Copiar título">
+                <Copy size={16} />
+            </button>
+        </span>
+    ) : (notFound ? 'No encontrada' : 'Cargando...');
+
     return (
-        <SheetModal open={open} onClose={closeDetail} title={data?.nombre || (notFound ? 'No encontrada' : 'Cargando...')} maxWidth="640px">
+        <SheetModal open={open} onClose={closeDetail} title={modalTitle} maxWidth="640px">
             {loadingDetail && !data && (
                 <div className={style.detailLoader}><Loader label="Cargando..." /></div>
             )}
@@ -265,7 +282,12 @@ export const DetailModal = ({ ls }) => {
                     )}
 
                     {!!data.descripcion && (
-                        <p className={style.detailDesc}>{data.descripcion}</p>
+                        <div className={style.detailDescWrap}>
+                            <p className={style.detailDesc}>{data.descripcion}</p>
+                            <button type="button" className={style.copyIconBtn} onClick={() => copyText(data.descripcion, 'Descripción')} title="Copiar descripción" aria-label="Copiar descripción">
+                                <Copy size={16} />
+                            </button>
+                        </div>
                     )}
 
                     <ReactionBar figuraId={data.id} reacciones={data.reacciones} misReacciones={data.mis_reacciones} />

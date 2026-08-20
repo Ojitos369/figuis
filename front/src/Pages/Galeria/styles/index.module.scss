@@ -499,6 +499,43 @@
     white-space: pre-wrap;
 }
 
+.detailTitleWrap {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    min-width: 0;
+}
+
+.detailTitleText {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.detailDescWrap {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-2);
+}
+
+.copyIconBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: none;
+    border-radius: var(--r-md);
+    background: transparent;
+    color: var(--text-soft);
+    cursor: pointer;
+    transition: background var(--t-fast), color var(--t-fast);
+
+    &:hover { background: var(--surface-3); color: var(--text); }
+}
+
 .actionsRow {
     display: flex;
     flex-wrap: wrap;
