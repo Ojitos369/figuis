@@ -16,6 +16,7 @@ logs/*
 !/backups/backup.sh
 !/backups/restore.sh
 
+.codebase-memory/
 prompts/
 docs/
 
