@@ -833,7 +833,7 @@ def catalog_html(collections: Iterable[dict[str, Any]], base_url: str, total: in
             )
     return f"""
 <main data-agent-readable="true">
-  <h1>Figuis 3D: figuras 3D, K-pop y coleccionables</h1>
+  <h1>Figuis 3D: figuras 3D, K-pop, anime, series, coleccionables y mas</h1>
   <p>Figuis es el catálogo de Ojitos369, también conocido como Figuis 3D o Figuis 369.</p>
   <p>Figuis reúne {total} {collection_label} con imágenes, figuras, referencias K-pop y modelos 3D.</p>
   <p>Actualmente es un catálogo informativo y no ofrece compra en línea.</p>
@@ -1093,7 +1093,7 @@ def catalog_markdown(collections: Iterable[dict[str, Any]], total: int, base_url
     collections = list(collections)
     collection_label = "colección pública" if total == 1 else "colecciones públicas"
     lines = [
-        "# Figuis 3D: figuras 3D, K-pop y coleccionables",
+        "# Figuis 3D: figuras 3D, K-pop, anime, series, coleccionables y mas",
         "",
         "Figuis es el catálogo de Ojitos369, también conocido como Figuis 3D o Figuis 369.",
         f"Figuis contiene {total} {collection_label} con figuras, referencias K-pop, imágenes y modelos 3D.",

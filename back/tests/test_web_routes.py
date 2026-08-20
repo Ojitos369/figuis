@@ -134,7 +134,7 @@ class PublicWebRouteTests(unittest.TestCase):
 
         self.assertEqual(home.status_code, 200)
         self.assertIn("<title>Figuis 3D · Figuras 3D, K-pop y coleccionables</title>", home.text)
-        self.assertIn("<h1>Figuis 3D: figuras 3D, K-pop y coleccionables</h1>", home.text)
+        self.assertIn("<h1>Figuis 3D: figuras 3D, K-pop, anime, series, coleccionables y mas</h1>", home.text)
         self.assertIn("Figuis es el catálogo de Ojitos369", home.text)
         self.assertIn(f'href="{ANIMAL_TAG_CANONICAL_URL}">#Animal</a>', home.text)
         self.assertIn(CANONICAL_URL, home.text)
