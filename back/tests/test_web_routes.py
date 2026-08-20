@@ -261,6 +261,36 @@ class PublicWebRouteTests(unittest.TestCase):
         )
         self.assertIn("https://figuis.example/mcp-info", llms.text)
 
+    def test_mcp_url_without_trailing_slash_redirects_without_https_downgrade(self):
+        initialize = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2025-06-18",
+                "capabilities": {},
+                "clientInfo": {"name": "figuis-test", "version": "1.0"},
+            },
+        }
+        headers = {
+            "Accept": "application/json, text/event-stream",
+            "Content-Type": "application/json",
+        }
+
+        compatibility = self.client.post(
+            "/mcp",
+            json=initialize,
+            headers=headers,
+            follow_redirects=False,
+        )
+        canonical = self.client.post("/mcp/", json=initialize, headers=headers)
+
+        self.assertEqual(compatibility.status_code, 307)
+        self.assertEqual(compatibility.headers["location"], "/mcp/")
+        self.assertEqual(compatibility.headers["cache-control"], "no-store")
+        self.assertEqual(canonical.status_code, 200)
+        self.assertEqual(canonical.json()["result"]["protocolVersion"], "2025-06-18")
+
     def test_public_api_404_remains_json_while_web_404_is_html(self):
         with patch("apis.public.urls.get_collection", return_value=None):
             api_missing = self.client.get("/api/public/v1/collections/not-found")

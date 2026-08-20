@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
 from urls import urls_router, add_404_handler
 from mcp_server import catalog_mcp, catalog_mcp_app
@@ -64,6 +65,23 @@ app.add_middleware(
 )
 
 app.include_router(urls_router, prefix="")
+
+
+@app.api_route(
+    "/mcp",
+    methods=["GET", "POST", "DELETE", "OPTIONS"],
+    include_in_schema=False,
+)
+async def canonical_mcp_redirect():
+    """Preserva método/body y evita que el proxy degrade el redirect a HTTP."""
+
+    return RedirectResponse(
+        url="/mcp/",
+        status_code=307,
+        headers={"Cache-Control": "no-store"},
+    )
+
+
 app.mount("/mcp", catalog_mcp_app, name="figuis-mcp")
 
 add_404_handler(app)
