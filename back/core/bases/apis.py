@@ -13,6 +13,7 @@ from starlette.concurrency import run_in_threadpool
 from ojitos369.errors import CatchErrors as CE
 from ojitos369.utils import get_d, print_line_center, printwln as pln
 from core.websockets.manager import ConnectionManager
+from core.http import RequestBodyTooLarge
 from .utils import ClassBase
 
 from core.conf.settings import MYE, ce, prod_mode, dev_mode, COOKIE_NAME
@@ -21,11 +22,15 @@ sec_code = "0e5a332d-9e2e-427d-bd84-4e581fe8a806"
 
 
 class NoSession:
+    sessions = False
+
     def validate_session(self):
         pass
 
 
 class BaseApi(ClassBase):
+    sessions = True
+
     def __init__(self, *args, **kwargs):
         self.request = kwargs.get('request', None)
         self.response_obj = kwargs.get('response', None)
@@ -50,6 +55,8 @@ class BaseApi(ClassBase):
             self.extra_error = f'\n{self.extra_error}'
             self.extra_error += f'\nIp de la petition: {self.petition_ip}'
             raise e
+        except HTTPException:
+            raise
         except MYE as e:
             error = self.ce.show_error(e, extra=self.extra_error)
             print_line_center(error)
@@ -74,7 +81,9 @@ class BaseApi(ClassBase):
                 data = {key: value for key, value in form.items()}
             else:
                 data = await self.request.json()
-        except Exception as e:
+        except RequestBodyTooLarge:
+            raise
+        except Exception:
             data = {}
         for key, value in data.items():
             self.data[key] = value
@@ -136,17 +145,23 @@ class BaseApi(ClassBase):
         self.get_client_ip()
         try:
             self.get_get_data()
+            if self.sessions:
+                await run_in_threadpool(self.validate_session)
             await self.get_post_data()
-        except Exception as e:
-            self.errors(e)
-        try:
-            await run_in_threadpool(self.validate_session)
+            if not self.sessions:
+                await run_in_threadpool(self.validate_session)
             result = await run_in_threadpool(self.main)
             return result or self.response
+        except RequestBodyTooLarge:
+            raise
         except Exception as e:
             self.errors(e)
         finally:
-            self.close_conexion()
+            try:
+                if self.form is not None:
+                    await self.form.close()
+            finally:
+                self.close_conexion()
 
 
 class PostApi(BaseApi):
@@ -222,6 +237,3 @@ class WebSocketApi:
         finally:
             self.manager.disconnect(self.websocket, chat_id)
             await self.on_disconnect()
-
-
-

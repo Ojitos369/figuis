@@ -2,18 +2,21 @@ import { Link, useLocation } from 'react-router-dom';
 import { Tag } from '../../../Components/Tag';
 import { MediaThumb } from '../../../Components/MediaThumb';
 import { ReactionSummary } from '../../../Components/ReactionSummary';
+import { getCanonicalFiguraIdentifier, getFiguraPath } from '../figuraUrl';
 
 export const FigCard = ({ figura, style, onOpen, enterDelay = 0 }) => {
     const location = useLocation();
+    const identifier = getCanonicalFiguraIdentifier(figura);
+
     return (
         <Link
-            to={`/figura/${figura.id}${location.search}`}
+            to={`${getFiguraPath(identifier)}${location.search}`}
             className={`${style.figCard} ${style.figCardIn}`}
             style={{ animationDelay: `${enterDelay}ms` }}
             onClick={(e) => {
                 if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button === 1) return;
                 e.preventDefault();
-                onOpen(figura.id);
+                onOpen(identifier);
             }}
         >
             <div className={style.figThumb}>

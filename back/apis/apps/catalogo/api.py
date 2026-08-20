@@ -6,6 +6,12 @@ import zipfile
 
 from core.bases.apis import BaseApi, NoSession, pln
 from core.bases.utils import CODIGO_EXPR, CODIGO_LEGACY_EXPR
+from core.catalog import (
+    canonical_identifier,
+    collection_slug,
+    normalize_pagination,
+    resolve_collection,
+)
 from core.conf.settings import MEDIA_DIR
 from fastapi.responses import StreamingResponse
 
@@ -14,11 +20,10 @@ class DownloadFiguraMedia(NoSession, BaseApi):
     """Genera un ZIP con los resultados y archivos relacionados de una figura."""
 
     def main(self):
-        figura_id = self.data.get("id")
-        try:
-            figura_id = str(uuid.UUID(str(figura_id)))
-        except (ValueError, AttributeError):
+        resolved = resolve_collection(self.data.get("id"), connection=self.conexion)
+        if resolved is None:
             raise self.MYE("Figura no encontrada")
+        figura_id = resolved["id"]
 
         figura = self.conexion.consulta_asociativa(
             "SELECT id, nombre FROM figuras WHERE id = :id AND estatus = 'publico'",
@@ -108,12 +113,9 @@ class GetFiguras(NoSession, BaseApi):
         total_res = self.conexion.consulta_asociativa(query_count, self.query_data)
         total = int(total_res.iloc[0]["total"]) if not total_res.empty else 0
 
-        limit = self.data.get("limit", 24)
-        page = self.data.get("page", 1)
-        try: limit = int(limit)
-        except Exception: limit = 24
-        try: page = int(page)
-        except Exception: page = 1
+        page, limit = normalize_pagination(
+            self.data.get("page", 1), self.data.get("limit", 24)
+        )
         offset = (page - 1) * limit
 
         orden_sql = self.ORDEN_MAP.get(self.data.get("orden"), self.ORDEN_MAP["fecha_desc"])
@@ -156,9 +158,13 @@ class GetFiguras(NoSession, BaseApi):
         LIMIT :limit OFFSET :offset
         """
         query_data = {**self.query_data, "limit": limit, "offset": offset}
-        figuras = self.conexion.consulta_asociativa(query, query_data)
+        figuras = self.d2d(self.conexion.consulta_asociativa(query, query_data))
+        for figura in figuras:
+            etiquetas = figura.get("etiquetas") if isinstance(figura.get("etiquetas"), list) else []
+            figura["slug"] = collection_slug(figura.get("nombre"), etiquetas)
+            figura["canonical_id"] = canonical_identifier(figura.get("nombre"), etiquetas, figura["id"])
         self.response = {
-            "data": self.d2d(figuras),
+            "data": figuras,
             "pagination": {
                 "total": total,
                 "page": page,
@@ -238,11 +244,13 @@ class GetFiguraPagina(GetFiguras):
         self.show_me()
         self.get_filtros()
 
-        figura_id = self.data.get("id")
+        resolved = resolve_collection(self.data.get("id"), connection=self.conexion)
+        if resolved is None:
+            self.response = {"data": None}
+            return
+        figura_id = resolved["id"]
 
-        limit = self.data.get("limit", 24)
-        try: limit = int(limit)
-        except Exception: limit = 24
+        _, limit = normalize_pagination(1, self.data.get("limit", 24))
 
         orden_sql = self.ORDEN_MAP.get(self.data.get("orden"), self.ORDEN_MAP["fecha_desc"])
 
@@ -274,7 +282,10 @@ class GetFiguraPagina(GetFiguras):
 class GetFigura(NoSession, BaseApi):
     def main(self):
         self.show_me()
-        id = self.data["id"]
+        resolved = resolve_collection(self.data["id"], connection=self.conexion)
+        if resolved is None:
+            raise self.MYE("Figura no encontrada")
+        id = resolved["id"]
 
         query = f"SELECT f.*, {CODIGO_EXPR} as codigo FROM figuras f WHERE f.id = :id AND f.estatus = 'publico'"
         res = self.conexion.consulta_asociativa(query, {"id": id})
@@ -301,6 +312,10 @@ class GetFigura(NoSession, BaseApi):
             {"id": id}
         )
         figura["etiquetas"] = self.d2d(etiquetas)
+        figura["tags"] = figura["etiquetas"]
+        figura["slug"] = collection_slug(figura.get("nombre"), figura["etiquetas"])
+        figura["canonical_id"] = canonical_identifier(figura.get("nombre"), figura["etiquetas"], id)
+        figura["resolution"] = resolved["resolution"]
 
         reacciones = self.conexion.consulta_asociativa(
             """

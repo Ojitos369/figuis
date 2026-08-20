@@ -13,6 +13,7 @@ import { mediaUrl } from '../../../constants/api';
 import facebookIcon from '../../../assets/social/facebook.svg';
 import instagramIcon from '../../../assets/social/instagram.svg';
 import whatsappIcon from '../../../assets/social/whatsapp.svg';
+import { getCanonicalFiguraIdentifier, getFiguraPath, isFiguraIdentifierFor } from '../figuraUrl';
 
 const SWIPE_THRESHOLD = 40;
 
@@ -38,16 +39,18 @@ const fileNameFromPath = (path, fallback) => {
 
 export const DetailModal = ({ ls }) => {
     const { s, f } = useStates();
-    const { style, id, figuraActual, loadingDetail, closeDetail } = ls;
+    const { style, identifier, figuraActual, loadingDetail, closeDetail } = ls;
     const [activeIdx, setActiveIdx] = useState(0);
     const [show3D, setShow3D] = useState(false);
     const [shareMenuOpen, setShareMenuOpen] = useState(false);
     const [selectSheetOpen, setSelectSheetOpen] = useState(false);
 
-    const open = !!id;
+    const open = !!identifier;
     const isLogged = s.auth?.logged === true;
     const notFound = open && figuraActual === false;
-    const data = open && figuraActual ? figuraActual : null;
+    const data = open && figuraActual && isFiguraIdentifierFor(identifier, figuraActual)
+        ? figuraActual
+        : null;
     const gallery = data ? [...(data.resultado || []), ...(data.relacionados || [])] : [];
     const modelo3d = data?.modelos_3d?.[0];
     const canNav = !show3D && gallery.length > 1;
@@ -58,7 +61,7 @@ export const DetailModal = ({ ls }) => {
         setShow3D(false);
         setShareMenuOpen(false);
         setSelectSheetOpen(false);
-    }, [id]);
+    }, [identifier]);
 
     useEffect(() => {
         if (!shareMenuOpen) return;
@@ -105,8 +108,9 @@ export const DetailModal = ({ ls }) => {
     };
 
     const getShareData = () => {
+        const canonicalIdentifier = getCanonicalFiguraIdentifier(data, identifier);
         const version = data?.updated_at ? `?v=${encodeURIComponent(data.updated_at)}` : '';
-        const url = `${window.location.origin}/figura/${id}${version}`;
+        const url = `${window.location.origin}${getFiguraPath(canonicalIdentifier)}${version}`;
         const text = `${data?.nombre || ''}\nCodigo: ${data?.codigo || ''}\n${url}`;
         return { text, url };
     };
@@ -169,7 +173,8 @@ export const DetailModal = ({ ls }) => {
             .map(tag => `#${tag}`)
             .join(' ');
         const hashtags = [tags, '#figures', '#3dprinting', '#3dfigures'].filter(Boolean).join(' ');
-        const url = `${window.location.origin}/figura/${id}`;
+        const canonicalIdentifier = getCanonicalFiguraIdentifier(data, identifier);
+        const url = `${window.location.origin}${getFiguraPath(canonicalIdentifier)}`;
         const metadata = `${data.nombre || ''}\n${hashtags}\n\nCodigo: ${data.codigo || ''}\n${url}`;
 
         navigator.clipboard?.writeText(metadata)?.then(() => {

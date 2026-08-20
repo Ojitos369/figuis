@@ -10,6 +10,6 @@ export default defineConfig(({ command }) => ({
   base: command === 'build' ? '/media/dist/' : '/',
   plugins: [react()],
   server: {
-    allowedHosts: ['figuis.ojitos369.com']
+    allowedHosts: ['figuis.ojitos3695.com', 'figuis.ojitos369.com']
   }
 }))

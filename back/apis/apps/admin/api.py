@@ -2,12 +2,72 @@ import os
 import json
 import re
 import struct
+from pathlib import Path
+
+from fastapi import HTTPException, status
 
 from core.bases.apis import BaseApi, pln
 from core.bases.utils import CODIGO_EXPR, CODIGO_LEGACY_EXPR
-from core.conf.settings import MEDIA_DIR
+from core.conf.settings import MAX_UPLOAD_FILE_SIZE, MEDIA_DIR
 from core.home_preview import schedule_home_preview_refresh
 from core.social_preview import generate_social_preview, remove_social_preview
+
+
+MODEL_UPLOAD_EXTENSIONS = frozenset({".stl"})
+RASTER_UPLOAD_EXTENSIONS = frozenset(
+    {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tif", ".tiff", ".avif"}
+)
+VIDEO_UPLOAD_EXTENSIONS = frozenset({".mp4", ".webm", ".mov", ".ogv", ".mkv", ".avi"})
+AUDIO_UPLOAD_EXTENSIONS = frozenset({".mp3", ".wav", ".m4a", ".flac", ".aac", ".oga"})
+MEDIA_UPLOAD_EXTENSIONS = (
+    RASTER_UPLOAD_EXTENSIONS | VIDEO_UPLOAD_EXTENSIONS | AUDIO_UPLOAD_EXTENSIONS
+)
+UPLOAD_COPY_CHUNK_SIZE = 1024 * 1024
+
+
+class UploadTooLargeError(ValueError):
+    pass
+
+
+def validate_upload_extension(tipo: str, filename: str) -> str:
+    """Return a normalized allowed extension for the requested media kind."""
+
+    ext = Path(filename or "").suffix.lower()
+    allowed = MODEL_UPLOAD_EXTENSIONS if tipo == "modelo_3d" else MEDIA_UPLOAD_EXTENSIONS
+    if ext not in allowed:
+        if tipo == "modelo_3d":
+            raise ValueError("Los modelos 3D deben ser archivos .stl")
+        raise ValueError("La extensión del archivo multimedia no está permitida")
+    return ext
+
+
+def copy_upload_limited(source, destination: Path, max_bytes: int = MAX_UPLOAD_FILE_SIZE) -> int:
+    """Stream an upload into a new temporary file without exceeding ``max_bytes``."""
+
+    if max_bytes < 1:
+        raise ValueError("max_bytes debe ser positivo")
+    destination = Path(destination)
+    written = 0
+    created = False
+    try:
+        with destination.open("xb") as target:
+            created = True
+            while True:
+                # Once the exact limit is reached, read one byte to distinguish
+                # a complete upload from one that still has more data.
+                read_size = min(UPLOAD_COPY_CHUNK_SIZE, max_bytes - written + 1)
+                chunk = source.read(read_size)
+                if not chunk:
+                    break
+                written += len(chunk)
+                if written > max_bytes:
+                    raise UploadTooLargeError
+                target.write(chunk)
+        return written
+    except Exception:
+        if created:
+            destination.unlink(missing_ok=True)
+        raise
 
 
 def refresh_social_preview(conexion, figura_id: str) -> None:
@@ -42,6 +102,25 @@ def stl_esta_completo(contents: bytes) -> bool:
         return True
     tail = contents[-200:].strip().lower()
     return contents[:5].lower() == b'solid' and b'endsolid' in tail
+
+
+def stl_archivo_esta_completo(file_path: Path) -> bool:
+    """Validate an STL using only its header and tail, never loading it whole."""
+
+    try:
+        size = file_path.stat().st_size
+        if size < 84:
+            return False
+        with file_path.open("rb") as source:
+            header = source.read(84)
+            n = struct.unpack("<I", header[80:84])[0]
+            if 84 + n * 50 <= size:
+                return True
+            source.seek(max(0, size - 200))
+            tail = source.read(200).strip().lower()
+        return header[:5].lower() == b"solid" and b"endsolid" in tail
+    except (OSError, struct.error):
+        return False
 
 
 class GetFigurasAdmin(BaseApi):
@@ -302,32 +381,61 @@ class SaveFiguraArchivo(BaseApi):
         if res.empty:
             raise self.MYE("Figura no encontrada")
 
-        folder_path = os.path.join(MEDIA_DIR, "figuras", str(figura_id))
-        os.makedirs(folder_path, exist_ok=True)
-
         id_archivo = self.get_id()
-        ext = os.path.splitext(file.filename or "")[1].lower()
+        try:
+            ext = validate_upload_extension(tipo, file.filename or "")
+        except ValueError as exc:
+            raise self.MYE(str(exc)) from exc
+
+        folder_path = Path(MEDIA_DIR) / "figuras" / str(figura_id)
+        folder_path.mkdir(parents=True, exist_ok=True)
+
         filename = f"{id_archivo}{ext}"
-        file_path = os.path.join(folder_path, filename)
-        contents = file.file.read()
+        file_path = folder_path / filename
+        temporary_path = folder_path / f".{id_archivo}-{self.get_id()}.upload"
+        installed = False
+        committed = False
+        try:
+            uploaded_size = copy_upload_limited(file.file, temporary_path)
+            if uploaded_size == 0:
+                raise self.MYE("El archivo está vacío")
+            if tipo == "modelo_3d" and not stl_archivo_esta_completo(temporary_path):
+                raise self.MYE(
+                    "El archivo .stl parece venir incompleto (subida cortada). "
+                    "Vuelve a intentar la subida."
+                )
 
-        if tipo == "modelo_3d" and ext == ".stl" and not stl_esta_completo(contents):
-            raise self.MYE("El archivo .stl parece venir incompleto (subida cortada). Vuelve a intentar la subida.")
+            os.replace(temporary_path, file_path)
+            installed = True
 
-        with open(file_path, 'wb') as f:
-            f.write(contents)
-
-        archivo_url = f"figuras/{figura_id}/{filename}"
-        self.conexion.ejecutar(
-            "INSERT INTO figura_archivos (id, figura_id, archivo_url, tipo) VALUES (:id, :figura_id, :archivo_url, :tipo)",
-            {"id": id_archivo, "figura_id": figura_id, "archivo_url": archivo_url, "tipo": tipo}
-        )
-        if tipo == "resultado":
-            self.conexion.ejecutar(
-                "UPDATE figuras SET updated_at = NOW() WHERE id = :id",
-                {"id": figura_id},
+            archivo_url = f"figuras/{figura_id}/{filename}"
+            inserted = self.conexion.ejecutar(
+                "INSERT INTO figura_archivos (id, figura_id, archivo_url, tipo) VALUES (:id, :figura_id, :archivo_url, :tipo)",
+                {"id": id_archivo, "figura_id": figura_id, "archivo_url": archivo_url, "tipo": tipo}
             )
-        self.conexion.commit()
+            if not inserted:
+                self.conexion.rollback()
+                raise self.MYE("Error al guardar el archivo")
+            if tipo == "resultado":
+                self.conexion.ejecutar(
+                    "UPDATE figuras SET updated_at = NOW() WHERE id = :id",
+                    {"id": figura_id},
+                )
+            self.conexion.commit()
+            committed = True
+        except UploadTooLargeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                detail=(
+                    "El archivo excede el límite de "
+                    f"{MAX_UPLOAD_FILE_SIZE // (1024 * 1024)} MiB"
+                ),
+            ) from exc
+        finally:
+            temporary_path.unlink(missing_ok=True)
+            if installed and not committed:
+                file_path.unlink(missing_ok=True)
+
         if tipo == "resultado":
             refresh_social_preview(self.conexion, figura_id)
         schedule_home_preview_refresh()

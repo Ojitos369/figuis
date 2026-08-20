@@ -9,6 +9,13 @@ const IconHome = (
     </svg>
 );
 
+const IconMcp = (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="6" cy="12" r="2.5" /><circle cx="18" cy="6" r="2.5" /><circle cx="18" cy="18" r="2.5" />
+        <path d="M8.5 11 15.5 7M8.5 13l7 4" />
+    </svg>
+);
+
 export const localStates = () => {
     const { s } = useStates();
     const [, setSidebarOpen] = createState(['sidebar', 'open'], false);
@@ -18,6 +25,7 @@ export const localStates = () => {
     // Contenido dinámico del sidebar (mapeado en el render)
     const elementos = useMemo(() => ([
         { name: 'Catálogo', page_name: 'index', to: '/', icon: IconHome },
+        { name: 'MCP', page_name: 'mcp', to: '/mcp-info', icon: IconMcp },
     ]), []);
 
     const closeIfMobile = () => {

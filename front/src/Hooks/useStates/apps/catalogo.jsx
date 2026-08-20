@@ -1,5 +1,7 @@
 import { getVisitorId } from '../../../Core/visitor';
 
+let figuraRequestSequence = 0;
+
 export const catalogo = props => {
     const { miAxios, s, u1, u2, notificacion } = props;
 
@@ -30,19 +32,24 @@ export const catalogo = props => {
     };
 
     const getFigura = (id, onDone) => {
+        const requestSequence = ++figuraRequestSequence;
         u2("loadings", "catalogo", "figura", true);
         u1("catalogo", "figuraActual", null);
         miAxios.get("catalogo/figura", { params: { id, visitor_id: getVisitorId() } })
             .then(res => {
+                if (requestSequence !== figuraRequestSequence) return;
                 u1("catalogo", "figuraActual", res.data.data);
                 if (onDone) onDone(res.data.data);
             })
             .catch(() => {
+                if (requestSequence !== figuraRequestSequence) return;
                 u1("catalogo", "figuraActual", false);
                 if (onDone) onDone(null);
             })
             .finally(() => {
-                u2("loadings", "catalogo", "figura", false);
+                if (requestSequence === figuraRequestSequence) {
+                    u2("loadings", "catalogo", "figura", false);
+                }
             });
     };
 

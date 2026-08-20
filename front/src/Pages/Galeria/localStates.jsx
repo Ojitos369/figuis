@@ -1,11 +1,46 @@
-import { useEffect, useMemo, useCallback } from 'react';
+import { useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useStates, createState } from '../../Hooks/useStates';
 import style from './styles/index.module.scss';
+import { getCanonicalFiguraIdentifier, getFiguraPath, isFiguraIdentifierFor } from './figuraUrl';
+
+const DEFAULT_TITLE = 'Figuis · Catálogo de colecciones y modelos 3D';
+const DEFAULT_DESCRIPTION = 'Catálogo público de colecciones, figuras, imágenes y modelos 3D para consulta e inspiración.';
+
+const setMetaContent = (attribute, key, content) => {
+    let element = document.head.querySelector(`meta[${attribute}="${key}"]`);
+    if (!element) {
+        element = document.createElement('meta');
+        element.setAttribute(attribute, key);
+        document.head.appendChild(element);
+    }
+    element.setAttribute('content', content);
+};
+
+const setCanonicalUrl = (url) => {
+    let element = document.head.querySelector('link[rel="canonical"]');
+    if (!element) {
+        element = document.createElement('link');
+        element.setAttribute('rel', 'canonical');
+        document.head.appendChild(element);
+    }
+    element.setAttribute('href', url);
+};
+
+const updateDocumentMetadata = ({ title, description, url }) => {
+    document.title = title;
+    setMetaContent('name', 'description', description);
+    setMetaContent('property', 'og:title', title);
+    setMetaContent('property', 'og:description', description);
+    setMetaContent('property', 'og:url', url);
+    setMetaContent('name', 'twitter:title', title);
+    setMetaContent('name', 'twitter:description', description);
+    setCanonicalUrl(url);
+};
 
 export const localStates = () => {
     const { s, f } = useStates();
-    const { id } = useParams();
+    const { identifier } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -103,9 +138,14 @@ export const localStates = () => {
         return `${location.pathname}${qs ? `?${qs}` : ''}`;
     }, [location.pathname, location.search]);
 
-    const openDetail = useCallback((figuraId) => {
-        navigate(`/figura/${figuraId}${location.search}`);
+    const openDetail = useCallback((figuraIdentifier) => {
+        navigate(`${getFiguraPath(figuraIdentifier)}${location.search}`);
     }, [navigate, location.search]);
+
+    const replaceDetailIdentifier = useCallback((canonicalIdentifier) => {
+        if (!canonicalIdentifier || String(canonicalIdentifier) === identifier) return;
+        navigate(`${getFiguraPath(canonicalIdentifier)}${location.search}`, { replace: true });
+    }, [identifier, navigate, location.search]);
 
     const closeDetail = useCallback(() => {
         navigate(`/${location.search}`);
@@ -137,8 +177,8 @@ export const localStates = () => {
     // Mantiene la URL en sync con los filtros/pagina/limite actuales para que
     // siempre se pueda copiar y reproduzca la misma vista al abrirla de nuevo.
     useEffect(() => {
-        const params = new URLSearchParams();
-        if (searchParams.get('filtros') === '1') params.set('filtros', '1');
+        const params = new URLSearchParams(location.search);
+        ['s', 'tags', 'reacciones', 'orden', 'desde', 'hasta', 'page', 'limit'].forEach(key => params.delete(key));
         if (q) params.set('s', q);
         if (selectedTags.length) params.set('tags', selectedTags.join(','));
         if (selectedReacciones.length) params.set('reacciones', selectedReacciones.join(','));
@@ -152,18 +192,19 @@ export const localStates = () => {
     }, [q, selectedTags, selectedReacciones, orden, desde, hasta, page, limit]);
 
     return {
-        style, id, figuras, pagination, loading, etiquetas, reaccionesDisponibles,
+        style, identifier, figuras, pagination, loading, etiquetas, reaccionesDisponibles,
         figuraActual, loadingDetail,
         q, setQ: setQAndResetPage, selectedTags, toggleTag,
         selectedReacciones, toggleReaccionFiltro, page, setPage,
         orden, setOrden, desde, setDesde, hasta, setHasta, limit,
         filtersOpen, openFilters, closeFilters, applyFilters, activeFiltersCount, clearFilters,
-        openDetail, closeDetail, getPageHref,
+        openDetail, closeDetail, replaceDetailIdentifier, getPageHref,
     };
 };
 
 export const localEffects = (ls) => {
     const { f } = useStates();
+    const requestedIdentifierRef = useRef(null);
 
     useEffect(() => {
         f.auth.validateLogin();
@@ -171,6 +212,7 @@ export const localEffects = (ls) => {
 
     useEffect(() => {
         f.u1('page', 'title', 'Catálogo');
+        f.u1('page', 'actual', 'index');
         f.u1('sidebar', 'sideMode', undefined);
         f.catalogo.getEtiquetas();
         f.catalogo.getReacciones();
@@ -193,19 +235,34 @@ export const localEffects = (ls) => {
     }, [ls.q, ls.selectedTags, ls.selectedReacciones, ls.orden, ls.desde, ls.hasta, ls.page, ls.limit]);
 
     useEffect(() => {
-        if (ls.id) {
-            f.catalogo.getFigura(ls.id);
+        if (!ls.identifier) {
+            requestedIdentifierRef.current = null;
+            return;
         }
-    }, [ls.id]);
+        const loadedIdentifier = getCanonicalFiguraIdentifier(ls.figuraActual);
+        const isCanonicalRewrite = requestedIdentifierRef.current !== null
+            && loadedIdentifier === ls.identifier;
+        requestedIdentifierRef.current = ls.identifier;
+        if (!isCanonicalRewrite) f.catalogo.getFigura(ls.identifier);
+    }, [ls.identifier]);
 
-    // Si se entra directo a /figura/:id (link compartido, nueva pestana,
+    // Los UUID y aliases existentes siguen resolviendo, pero la direccion que
+    // queda en el navegador siempre es la que el API declara como canonica.
+    useEffect(() => {
+        if (!ls.identifier || !ls.figuraActual) return;
+        if (!isFiguraIdentifierFor(ls.identifier, ls.figuraActual)) return;
+        const canonicalIdentifier = getCanonicalFiguraIdentifier(ls.figuraActual);
+        ls.replaceDetailIdentifier(canonicalIdentifier);
+    }, [ls.identifier, ls.figuraActual, ls.replaceDetailIdentifier]);
+
+    // Si se entra directo a /figura/:identifier (link compartido, nueva pestana,
     // recargar la pagina) el paginador de fondo arranca en la pagina 1 sin
     // saber en cual vive realmente esa figura. Solo se resuelve una vez, al
     // montar: si el detalle se abrio con un click desde la grilla, ese click
     // ya ocurrio en la pagina correcta y no hace falta tocarla.
     useEffect(() => {
-        if (!ls.id) return;
-        f.catalogo.getFiguraPagina(ls.id, {
+        if (!ls.identifier) return;
+        f.catalogo.getFiguraPagina(ls.identifier, {
             q: ls.q || undefined,
             etiquetas: ls.selectedTags.length ? ls.selectedTags.join(',') : undefined,
             reacciones: ls.selectedReacciones.length ? ls.selectedReacciones.join(',') : undefined,
@@ -219,16 +276,38 @@ export const localEffects = (ls) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // al entrar al detalle de una figura se cambia el titulo de la pestana al
-    // nombre de la figura; al salir (o si no se encontro) vuelve al del catalogo.
+    // Mantiene metadatos basicos y la URL canonica sincronizados para enlaces
+    // compartidos, resultados de busqueda y vistas previas sociales.
     useEffect(() => {
-        if (!ls.id) {
-            document.title = 'Figuis · Catálogo';
+        const catalogUrl = `${window.location.origin}/`;
+        if (!ls.identifier) {
+            updateDocumentMetadata({ title: DEFAULT_TITLE, description: DEFAULT_DESCRIPTION, url: catalogUrl });
             return;
         }
-        if (ls.figuraActual && ls.figuraActual.nombre) {
-            document.title = `${ls.figuraActual.nombre} · Figuis`;
+
+        if (ls.figuraActual === false) {
+            updateDocumentMetadata({
+                title: 'Figura no encontrada · Figuis',
+                description: 'La figura solicitada no existe o ya no está disponible.',
+                url: `${window.location.origin}${getFiguraPath(ls.identifier)}`,
+            });
+            return;
         }
-        return () => { document.title = 'Figuis · Catálogo'; };
-    }, [ls.id, ls.figuraActual]);
+
+        if (ls.figuraActual?.nombre && isFiguraIdentifierFor(ls.identifier, ls.figuraActual)) {
+            const canonicalIdentifier = getCanonicalFiguraIdentifier(ls.figuraActual, ls.identifier);
+            const description = String(
+                ls.figuraActual.descripcion || `Consulta fotos, archivos y detalles de ${ls.figuraActual.nombre} en Figuis.`
+            ).replace(/\s+/g, ' ').trim().slice(0, 160);
+            updateDocumentMetadata({
+                title: `${ls.figuraActual.nombre} · Figuis`,
+                description,
+                url: `${window.location.origin}${getFiguraPath(canonicalIdentifier)}`,
+            });
+        }
+
+        return () => {
+            updateDocumentMetadata({ title: DEFAULT_TITLE, description: DEFAULT_DESCRIPTION, url: catalogUrl });
+        };
+    }, [ls.identifier, ls.figuraActual]);
 };

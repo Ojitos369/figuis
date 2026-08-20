@@ -4,6 +4,7 @@ import { cambiarThema } from '../Core/helper';
 
 import { Main as MainPage } from '../Pages/Main';
 import { Galeria as GaleriaPage } from '../Pages/Galeria';
+import { McpInfo as McpInfoPage } from '../Pages/McpInfo';
 import { P404 } from '../Pages/P404';
 
 import { AdminGuard } from '../Pages/Admin/AdminGuard';
@@ -61,7 +62,8 @@ function AppUI() {
                     {/* -----------   CATALOGO PUBLICO   ----------- */}
                     <Route path="" element={<MainPage />}>
                         <Route path="" element={<GaleriaPage />} />
-                        <Route path="figura/:id" element={<GaleriaPage />} />
+                        <Route path="figura/:identifier" element={<GaleriaPage />} />
+                        <Route path="mcp-info" element={<McpInfoPage />} />
                         <Route path="*" element={<P404 />} />
                     </Route>
                 </Routes>

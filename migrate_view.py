@@ -53,7 +53,7 @@ class Migrate:
             pln(file_name)
             js = self.replace_media(f"{media_dir}/assets/{file_name}")
 
-            structure = '''https?://localhost(:\d+)?'''
+            structure = r'https?://localhost(:\d+)?'
             matches = re.finditer(structure, js)
             matches = sorted(matches, key=lambda x: len(x.group(0)), reverse=True)
             for match in matches:
