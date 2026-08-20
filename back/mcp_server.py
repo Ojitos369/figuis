@@ -507,7 +507,7 @@ def list_collections(
 @catalog_mcp.tool(
     title="Consultar una coleccion",
     description=(
-        "Obtiene una coleccion publica por UUID, slug SEO (slug--UUID) o slug unico. "
+        "Obtiene una coleccion publica por UUID, slug SEO (slug-codigo) o slug unico. "
         "Devuelve su URL canonica y metadatos publicos, nunca datos de venta o stock."
     ),
     annotations=READ_ONLY_ANNOTATIONS,

@@ -69,10 +69,11 @@ class SlugAndIdentifierTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertNotIn("#", first)
 
-    def test_canonical_identifier_keeps_full_normalized_uuid(self):
+    def test_canonical_identifier_uses_short_readable_code(self):
         identifier = catalog.canonical_identifier("Robot", ["#Sci Fi"], COLLECTION_ID.upper())
-        self.assertEqual(identifier, f"robot-sci-fi--{COLLECTION_ID}")
+        self.assertEqual(identifier, "robot-sci-fi-123e45")
         self.assertEqual(catalog.short_code(COLLECTION_ID), "123E45")
+        self.assertNotIn(COLLECTION_ID, identifier)
 
     def test_tag_identifier_is_stable_and_contains_no_hash(self):
         identifier = catalog.tag_identifier("#K-pop / TWICE", TAG_ID.upper())
@@ -136,23 +137,27 @@ class RepositoryTests(unittest.TestCase):
         }
 
     def test_resolves_uuid_stale_identifier_and_unique_current_slug(self):
+        code = catalog.short_code(COLLECTION_ID).lower()
+
         def handler(sql, params):
             if "resolve.by_uuid" in sql:
                 return [self.identity()] if params["id"] == COLLECTION_ID else []
+            if "resolve.by_code" in sql:
+                return [self.identity()] if params["code"] == code else []
             if "resolve.by_slug" in sql:
                 return [self.identity()]
             return []
 
         connection = FakeConnection(handler)
         repository = catalog.CatalogRepository(connection, base_url="https://figuis.example")
-        canonical = f"nino-robot-impresion-3d-sci-fi--{COLLECTION_ID}"
+        canonical = f"nino-robot-impresion-3d-sci-fi-{code}"
 
         by_uuid = repository.resolve_collection(COLLECTION_ID)
         self.assertEqual(by_uuid["id"], COLLECTION_ID)
         self.assertEqual(by_uuid["resolution"], "uuid")
         self.assertFalse(by_uuid["is_canonical"])
 
-        stale = repository.resolve_collection(f"nombre-anterior--{COLLECTION_ID}")
+        stale = repository.resolve_collection(f"nombre-anterior-{code}")
         self.assertEqual(stale["canonical_id"], canonical)
         self.assertEqual(stale["resolution"], "stale")
 
@@ -160,6 +165,18 @@ class RepositoryTests(unittest.TestCase):
         self.assertEqual(by_slug["id"], COLLECTION_ID)
         self.assertEqual(by_slug["resolution"], "slug")
         self.assertEqual(by_slug["canonical_url"], f"https://figuis.example/figura/{canonical}")
+
+    def test_ambiguous_short_code_does_not_guess(self):
+        def handler(sql, _params):
+            if "resolve.by_code" in sql:
+                return [
+                    self.identity(COLLECTION_ID, "Robot", ["3D"]),
+                    self.identity(SECOND_COLLECTION_ID, "Robot", ["3D"]),
+                ]
+            return []
+
+        repository = catalog.CatalogRepository(FakeConnection(handler))
+        self.assertIsNone(repository.resolve_collection("robot-3d-123e45"))
 
     def test_ambiguous_pure_slug_does_not_guess(self):
         def handler(sql, _params):

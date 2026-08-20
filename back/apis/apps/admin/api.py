@@ -8,6 +8,7 @@ from fastapi import HTTPException, status
 
 from core.bases.apis import BaseApi, pln
 from core.bases.utils import CODIGO_EXPR, CODIGO_LEGACY_EXPR
+from core.catalog import canonical_identifier, collection_slug
 from core.conf.settings import MAX_UPLOAD_FILE_SIZE, MEDIA_DIR
 from core.home_preview import schedule_home_preview_refresh
 from core.social_preview import generate_social_preview, remove_social_preview
@@ -284,6 +285,8 @@ class GetFiguraAdmin(BaseApi):
             {"id": id}
         )
         figura["etiquetas"] = self.d2d(etiquetas)
+        figura["slug"] = collection_slug(figura.get("nombre"), figura["etiquetas"])
+        figura["canonical_id"] = canonical_identifier(figura.get("nombre"), figura["etiquetas"], id)
 
         self.response = {"data": figura}
 

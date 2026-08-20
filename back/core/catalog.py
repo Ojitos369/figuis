@@ -46,6 +46,9 @@ _UUID_SUFFIX_RE = re.compile(
     r"(?:^|--)([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
     re.IGNORECASE,
 )
+# Ancla de las URLs de figura: un solo guion seguido del codigo corto de 6
+# caracteres alfanumericos (nunca el UUID completo, para mantener el link legible).
+_CODE_SUFFIX_RE = re.compile(r"-([0-9a-f]{6})$", re.IGNORECASE)
 _PURE_SLUG_RE = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 _CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]")
 _LIKE_ESCAPE_RE = re.compile(r"([\\%_])")
@@ -127,9 +130,9 @@ def normalize_uuid(value: Any) -> str:
 
 
 def canonical_identifier(name: Any, tags: Iterable[Any] | None, collection_id: Any) -> str:
-    """Return ``{current-slug}--{uuid}``, with the UUID as the stable anchor."""
+    """Return ``{current-slug}-{code}``: readable, with the short code as anchor."""
 
-    return f"{collection_slug(name, tags)}--{normalize_uuid(collection_id)}"
+    return f"{collection_slug(name, tags)}-{short_code(collection_id).lower()}"
 
 
 def tag_identifier(name: Any, tag_id: Any) -> str:
@@ -888,6 +891,25 @@ class CatalogRepository(ClassBase):
             """
         )
 
+    def _identity_by_code(self, code: str) -> dict[str, Any] | None:
+        rows = self._query(
+            """/* public_catalog.resolve.by_code */
+                SELECT f.id, f.nombre,
+                    ARRAY(
+                        SELECT e.nombre FROM figura_etiquetas fe
+                        JOIN etiquetas e ON e.id = fe.etiqueta_id
+                        WHERE fe.figura_id = f.id
+                        ORDER BY lower(e.nombre), e.id
+                    ) AS tag_names
+                FROM figuras f
+                WHERE f.estatus = 'publico'
+                  AND lower(left(replace(f.id::text, '-', ''), 6)) = :code
+            """,
+            {"code": code},
+        )
+        # Una coincidencia ambigua (colision de codigo corto) no debe adivinar.
+        return rows[0] if len(rows) == 1 else None
+
     def _resolve(self, identifier: Any) -> dict[str, Any] | None:
         raw = str(identifier or "").strip()
         if not raw or len(raw) > 512 or _CONTROL_RE.search(raw):
@@ -899,10 +921,9 @@ class CatalogRepository(ClassBase):
             identity = self._identity_by_uuid(collection_id)
             resolution = "uuid"
         except ValueError:
-            suffix = _UUID_SUFFIX_RE.search(raw)
+            suffix = _CODE_SUFFIX_RE.search(raw)
             if suffix:
-                collection_id = normalize_uuid(suffix.group(1))
-                identity = self._identity_by_uuid(collection_id)
+                identity = self._identity_by_code(suffix.group(1).lower())
                 resolution = "canonical"
             elif len(raw) <= 180 and _PURE_SLUG_RE.fullmatch(raw):
                 matches = []

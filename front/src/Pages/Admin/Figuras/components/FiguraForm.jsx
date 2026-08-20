@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useStates } from '../../../../Hooks/useStates';
 import { SheetModal } from '../../../../Components/SheetModal';
+import { ShareActions } from '../../../../Components/ShareActions';
 import { MediaDropzone } from './MediaDropzone';
 import { Model3DDropzone } from './Model3DDropzone';
 import { TagInput } from './TagInput';
@@ -17,11 +18,13 @@ export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
     const [form, setForm] = useState(emptyForm);
     const [archivos, setArchivos] = useState(emptyArchivos);
     const [uploads, setUploads] = useState({ resultado: [], relacionado: [], modelo_3d: [] });
+    const [figuraMeta, setFiguraMeta] = useState(null);
 
     useEffect(() => {
         if (!open) return;
         f.catalogo.getEtiquetas();
         setCurrentId(figuraId || null);
+        setFiguraMeta(null);
         if (figuraId) {
             f.admin.getFigura(figuraId, (data) => {
                 if (!data) return;
@@ -36,6 +39,7 @@ export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
                     relacionado: data.relacionados || [],
                     modelo_3d: data.modelos_3d || [],
                 });
+                setFiguraMeta(data);
             });
         } else {
             setForm(emptyForm);
@@ -50,16 +54,17 @@ export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
         delete payload.etiquetas;
         f.admin.saveFigura({ id: currentId, ...payload }, (res) => {
             if (!res?.id) return;
-            if (!currentId) {
-                setCurrentId(res.id);
-                f.admin.getFigura(res.id, (data) => {
-                    setArchivos({
-                        resultado: data?.resultado || [],
-                        relacionado: data?.relacionados || [],
-                        modelo_3d: data?.modelos_3d || [],
-                    });
+            const nextId = currentId || res.id;
+            if (!currentId) setCurrentId(res.id);
+            f.admin.getFigura(nextId, (data) => {
+                if (!data) return;
+                setArchivos({
+                    resultado: data.resultado || [],
+                    relacionado: data.relacionados || [],
+                    modelo_3d: data.modelos_3d || [],
                 });
-            }
+                setFiguraMeta(data);
+            });
             onSaved?.();
         });
     };
@@ -154,6 +159,12 @@ export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
                 <button type="submit" className={style.saveBtn} disabled={saving || !form.nombre.trim()}>
                     {saving ? 'Guardando...' : (isEditing ? 'Guardar cambios' : 'Crear figura y continuar')}
                 </button>
+
+                {!!figuraMeta && (
+                    <div className={style.shareRow}>
+                        <ShareActions figura={figuraMeta} isLogged buttonClassName={style.shareBtn} />
+                    </div>
+                )}
 
                 {isEditing && (
                     <>

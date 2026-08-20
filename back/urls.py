@@ -37,6 +37,9 @@ from core.seo import (
     collection_markdown,
     collection_meta_description,
     collection_title,
+    custom_figures_document,
+    custom_figures_markdown,
+    custom_figures_payload,
     inject_spa_document,
     mcp_info_document,
     mcp_info_markdown,
@@ -327,6 +330,7 @@ def llms_txt(request: Request):
 - Páginas de etiqueta HTML, Markdown o JSON: {base_url}/etiqueta/{{slug}}--{{uuid}}
 - [Esquema OpenAPI público]({base_url}/api/public/openapi.json)
 - [Información, alcance y herramientas MCP]({base_url}/mcp-info)
+- [Figuras personalizadas]({base_url}/figuras-personalizadas): cómo pedir una figura a la medida (coordinado por Instagram)
 
 ## Acceso para agentes
 - MCP Streamable HTTP de solo lectura: {base_url}/mcp/
@@ -361,6 +365,25 @@ async def mcp_info(request: Request):
     return HTMLResponse(content=mcp_info_document(info, _spa_document()), headers=headers)
 
 
+@urls_router.get("/figuras-personalizadas", response_class=HTMLResponse)
+def custom_figures(request: Request):
+    """Página informativa de pedidos de figuras personalizadas vía Instagram."""
+
+    base_url = public_base_url(request)
+    info = custom_figures_payload(base_url)
+    headers = _representation_headers(info["canonical_url"], max_age=3600)
+    representation = _preferred_representation(request)
+    if representation == "json":
+        return JSONResponse(content=info, headers=headers)
+    if representation == "markdown":
+        return PlainTextResponse(
+            custom_figures_markdown(info),
+            media_type="text/markdown; charset=utf-8",
+            headers=headers,
+        )
+    return HTMLResponse(content=custom_figures_document(info, _spa_document()), headers=headers)
+
+
 # ---------   CONTROL Y DESCUBRIMIENTO DE CRAWLERS   ---------
 SEARCH_DISCOVERY_CRAWLERS = (
     "OAI-SearchBot",
@@ -380,7 +403,7 @@ TRAINING_CONTROL_CRAWLERS = (
     "Applebot-Extended",
 )
 MAX_SITEMAP_URLS = 50_000
-SITEMAP_STATIC_URLS = 2
+SITEMAP_STATIC_URLS = 3
 MAX_SITEMAP_DYNAMIC_URLS = MAX_SITEMAP_URLS - SITEMAP_STATIC_URLS
 
 
@@ -438,7 +461,7 @@ def sitemap(request: Request):
         base_url,
         maximum=remaining,
     )
-    locations = [f"{base_url}/", f"{base_url}/mcp-info"]
+    locations = [f"{base_url}/", f"{base_url}/mcp-info", f"{base_url}/figuras-personalizadas"]
     seen = set(locations)
     urls = [f"  <url><loc>{html.escape(location)}</loc></url>" for location in locations]
     for tag in tags:

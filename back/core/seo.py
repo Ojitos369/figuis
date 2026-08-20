@@ -619,6 +619,177 @@ def mcp_info_document(info: dict[str, Any], spa_document: str) -> str:
     )
 
 
+def custom_figures_payload(base_url: str) -> dict[str, Any]:
+    """Build the shared, public description of the custom-order page."""
+
+    base_url = base_url.rstrip("/")
+    canonical = f"{base_url}/figuras-personalizadas"
+    return {
+        "name": "Figuras personalizadas",
+        "description": (
+            "Pide una figura 3D personalizada hecha a partir de tu idea, personaje o "
+            "referencia. Los pedidos personalizados de Figuis se coordinan por Instagram."
+        ),
+        "canonical_url": canonical,
+        "contact": {
+            "channel": "Instagram",
+            "handle": "@figuis.3d",
+            "url": SITE_INSTAGRAM_URL,
+        },
+        "steps": [
+            "Escríbenos por Instagram con tu idea, personaje o referencia.",
+            "Platicamos detalles: tamaño, pose, colores y acabado.",
+            "Confirmamos el pedido y el tiempo de entrega estimado.",
+        ],
+        "related_interfaces": [
+            {
+                "name": "Catálogo web",
+                "url": f"{base_url}/",
+                "format": "HTML, Markdown o JSON por negociación",
+            },
+        ],
+    }
+
+
+def custom_figures_markdown(info: dict[str, Any]) -> str:
+    """Render the custom-order page as citable Markdown."""
+
+    contact = info["contact"]
+    lines = [
+        f"# {plain_text(info['name'])}",
+        "",
+        plain_text(info["description"]),
+        "",
+        f"- URL canónica: {info['canonical_url']}",
+        f"- Contacto: [{contact['handle']}]({contact['url']}) ({contact['channel']})",
+        "",
+        "## ¿Cómo pedir una figura personalizada?",
+        "",
+        *[f"{index}. {plain_text(step)}" for index, step in enumerate(info["steps"], start=1)],
+        "",
+        "## Disponibilidad comercial",
+        "",
+        "Los pedidos personalizados se cotizan y coordinan directamente por Instagram; "
+        "esta página no publica precio ni inventario.",
+    ]
+    return "\n".join(lines).strip() + "\n"
+
+
+def custom_figures_html(info: dict[str, Any]) -> str:
+    """Render visible SSR content for agents, crawlers and people without JS."""
+
+    def safe(value: Any, *, quote: bool = False) -> str:
+        return html.escape(plain_text(value), quote=quote)
+
+    contact = info["contact"]
+    steps_html = "".join(f"<li>{safe(step)}</li>" for step in info["steps"])
+    return f"""
+<main data-agent-readable="true">
+  <nav aria-label="Migas de pan"><a href="{safe(info['related_interfaces'][0]['url'], quote=True)}">Catálogo</a> / Figuras personalizadas</nav>
+  <article>
+    <h1>{safe(info['name'])}</h1>
+    <p>{safe(info['description'])}</p>
+    <section>
+      <h2>¿Cómo pido una figura personalizada?</h2>
+      <ol>{steps_html}</ol>
+    </section>
+    <section>
+      <h2>¿Dónde se coordinan los pedidos personalizados?</h2>
+      <p>Los pedidos personalizados se coordinan por Instagram, no dentro del catálogo web.</p>
+      <p><a href="{safe(contact['url'], quote=True)}">{safe(contact['handle'])} en Instagram</a></p>
+    </section>
+    <section>
+      <h2>¿Hay precio o inventario publicado?</h2>
+      <p>No. Esta página es informativa; el precio y el tiempo de entrega se cotizan por Instagram según el pedido.</p>
+    </section>
+  </article>
+</main>""".strip()
+
+
+def custom_figures_json_ld(info: dict[str, Any]) -> dict[str, Any]:
+    canonical = info["canonical_url"]
+    base_url = canonical.removesuffix("/figuras-personalizadas")
+    contact = info["contact"]
+    return {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "Organization",
+                "@id": f"{base_url}/#organization",
+                "name": SITE_NAME,
+                "alternateName": list(SITE_ALTERNATE_NAMES),
+                "url": f"{base_url}/",
+                "sameAs": list(SITE_SAME_AS),
+            },
+            {
+                "@type": "WebSite",
+                "@id": f"{base_url}/#website",
+                "name": SITE_NAME,
+                "alternateName": list(SITE_ALTERNATE_NAMES),
+                "url": f"{base_url}/",
+                "inLanguage": "es-MX",
+                "publisher": {"@id": f"{base_url}/#organization"},
+            },
+            {
+                "@type": "WebPage",
+                "@id": canonical,
+                "url": canonical,
+                "name": info["name"],
+                "description": info["description"],
+                "inLanguage": "es-MX",
+                "isPartOf": {"@id": f"{base_url}/#website"},
+                "mainEntity": {"@id": f"{canonical}#service"},
+                "breadcrumb": {"@id": f"{canonical}#breadcrumb"},
+            },
+            {
+                "@type": "Service",
+                "@id": f"{canonical}#service",
+                "name": info["name"],
+                "description": info["description"],
+                "serviceType": "Figura personalizada 3D",
+                "provider": {"@id": f"{base_url}/#organization"},
+                "areaServed": "MX",
+                "availableChannel": {
+                    "@type": "ServiceChannel",
+                    "serviceUrl": contact["url"],
+                    "name": contact["channel"],
+                },
+            },
+            {
+                "@type": "BreadcrumbList",
+                "@id": f"{canonical}#breadcrumb",
+                "itemListElement": [
+                    {
+                        "@type": "ListItem",
+                        "position": 1,
+                        "name": "Catálogo",
+                        "item": f"{base_url}/",
+                    },
+                    {
+                        "@type": "ListItem",
+                        "position": 2,
+                        "name": info["name"],
+                        "item": canonical,
+                    },
+                ],
+            },
+        ],
+    }
+
+
+def custom_figures_document(info: dict[str, Any], spa_document: str) -> str:
+    """Inject custom-order SSR content and metadata into the public SPA shell."""
+
+    return inject_spa_document(
+        spa_document,
+        title=_branded_title(info["name"]),
+        description=plain_text(info["description"], limit=220),
+        canonical_url=info["canonical_url"],
+        body_html=custom_figures_html(info),
+        structured_data=custom_figures_json_ld(info),
+    )
+
+
 def _tag_records(collection: dict[str, Any]) -> list[dict[str, Any]]:
     tags = value(collection, "tags", "etiquetas", default=[]) or []
     records: list[dict[str, Any]] = []
@@ -859,6 +1030,10 @@ def catalog_html(collections: Iterable[dict[str, Any]], base_url: str, total: in
   <section>
     <h2>¿Cómo consultar el catálogo desde un agente?</h2>
     <p>Usa la <a href="{html.escape(base_url, quote=True)}/api/public/v1/collections">API pública</a> o consulta la <a href="{html.escape(base_url, quote=True)}/mcp-info">información de conexión y herramientas del servidor MCP</a>.</p>
+  </section>
+  <section>
+    <h2>¿Se pueden pedir figuras personalizadas?</h2>
+    <p>Sí. Consulta <a href="{html.escape(base_url, quote=True)}/figuras-personalizadas">cómo pedir una figura personalizada</a>; los pedidos se coordinan por Instagram.</p>
   </section>
   <p>Síguenos en <a href="{html.escape(SITE_INSTAGRAM_URL, quote=True)}">Instagram (@figuis.3d)</a>.</p>
 </main>""".strip()
@@ -1156,6 +1331,10 @@ def catalog_markdown(collections: Iterable[dict[str, Any]], total: int, base_url
             f"- API JSON: {base_url}/api/public/v1/collections",
             f"- Información y herramientas MCP: {base_url}/mcp-info",
             f"- MCP de solo lectura: {base_url}/mcp/",
+            "",
+            "## Figuras personalizadas",
+            "",
+            f"Pide una figura personalizada: {base_url}/figuras-personalizadas (coordinado por Instagram).",
             "",
             "## Redes sociales",
             "",

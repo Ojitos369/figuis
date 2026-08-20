@@ -124,6 +124,19 @@
     &:hover { text-decoration: underline; }
 }
 
+.customLink {
+    padding: 5px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    color: var(--text-muted);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    text-decoration: none;
+    transition: color .15s ease, border-color .15s ease;
+
+    &:hover, &:focus-visible { color: var(--text); border-color: var(--accent-hover); }
+}
+
 .searchWrap {
     position: relative;
     display: flex;

@@ -5,6 +5,7 @@ import { cambiarThema } from '../Core/helper';
 import { Main as MainPage } from '../Pages/Main';
 import { Galeria as GaleriaPage } from '../Pages/Galeria';
 import { McpInfo as McpInfoPage } from '../Pages/McpInfo';
+import { FigurasPersonalizadas as FigurasPersonalizadasPage } from '../Pages/FigurasPersonalizadas';
 import { P404 } from '../Pages/P404';
 
 import { AdminGuard } from '../Pages/Admin/AdminGuard';
@@ -65,6 +66,7 @@ function AppUI() {
                         <Route path="etiqueta/:tagIdentifier" element={<GaleriaPage />} />
                         <Route path="figura/:identifier" element={<GaleriaPage />} />
                         <Route path="mcp-info" element={<McpInfoPage />} />
+                        <Route path="figuras-personalizadas" element={<FigurasPersonalizadasPage />} />
                         <Route path="*" element={<P404 />} />
                     </Route>
                 </Routes>

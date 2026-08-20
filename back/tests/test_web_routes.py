@@ -7,10 +7,11 @@ from xml.etree import ElementTree
 from fastapi.testclient import TestClient
 
 import main
+from core.catalog import short_code
 
 
 COLLECTION_ID = "123e4567-e89b-42d3-a456-426614174000"
-CANONICAL_ID = f"gato-articulado-animal--{COLLECTION_ID}"
+CANONICAL_ID = f"gato-articulado-animal-{short_code(COLLECTION_ID).lower()}"
 CANONICAL_URL = f"https://figuis.example/figura/{CANONICAL_ID}"
 ANIMAL_TAG_ID = "423e4567-e89b-42d3-a456-426614174000"
 ANIMAL_TAG_CANONICAL_ID = f"animal--{ANIMAL_TAG_ID}"
@@ -252,11 +253,11 @@ class PublicWebRouteTests(unittest.TestCase):
             sitemap = self.client.get("/sitemap.xml")
         tag_loader.assert_called_once_with(
             "https://figuis.example",
-            maximum=49_998,
+            maximum=49_997,
         )
         collection_loader.assert_called_once_with(
             "https://figuis.example",
-            maximum=49_997,
+            maximum=49_996,
         )
 
         for crawler in (
@@ -288,6 +289,7 @@ class PublicWebRouteTests(unittest.TestCase):
             [
                 "https://figuis.example/",
                 "https://figuis.example/mcp-info",
+                "https://figuis.example/figuras-personalizadas",
                 TAG_CANONICAL_URL,
                 CANONICAL_URL,
             ],

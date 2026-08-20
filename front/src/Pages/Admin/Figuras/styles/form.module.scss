@@ -444,6 +444,26 @@
     font-size: var(--fs-sm);
 }
 
+.shareRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+}
+
+.shareBtn {
+    padding: 0.6rem 1.1rem;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    border-radius: var(--r-md);
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    cursor: pointer;
+    transition: background var(--t-fast);
+
+    &:hover { background: var(--surface-3); }
+}
+
 .saveBtn {
     padding: var(--sp-3) var(--sp-4);
     font-size: var(--fs-sm);

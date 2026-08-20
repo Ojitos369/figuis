@@ -14,7 +14,11 @@ export const isFiguraIdentifierFor = (identifier, figura) => {
     const requested = String(identifier);
     const realId = String(figura.id).toLowerCase();
     if (requested.toLowerCase() === realId) return true;
-    if (requested.toLowerCase().endsWith(`--${realId}`)) return true;
+
+    // El link canonico termina en "-{codigo6}"; una ruta con slug desactualizado
+    // pero el mismo codigo sigue siendo la misma figura (se reescribe a la actual).
+    const codigo = String(figura.codigo || figura.code || '').toLowerCase();
+    if (codigo && requested.toLowerCase().endsWith(`-${codigo}`)) return true;
 
     return [figura.canonical_id, figura.slug]
         .filter(Boolean)

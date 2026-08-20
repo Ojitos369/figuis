@@ -1,0 +1,114 @@
+.shareMenuWrap {
+    display: contents;
+}
+
+.shareOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 400;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+    background: rgba(0, 0, 0, 0.58);
+    backdrop-filter: blur(3px);
+    animation: shareFadeIn var(--t-fast);
+}
+
+.shareSheet {
+    width: 100%;
+    max-width: 520px;
+    max-height: 58vh;
+    overflow-y: auto;
+    padding: var(--sp-2) var(--sp-3) calc(var(--sp-4) + env(safe-area-inset-bottom, 0px));
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    background: var(--surface-1);
+    box-shadow: var(--shadow-lg);
+    animation: shareSlideUp var(--t-slow);
+}
+
+.shareGrabber {
+    width: 42px;
+    height: 4px;
+    margin: 0 auto var(--sp-3);
+    border-radius: var(--r-pill);
+    background: var(--border-strong);
+}
+
+.shareSheetHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--sp-2);
+
+    h2 {
+        margin: 0;
+        color: var(--text);
+        font-size: var(--fs-lg);
+    }
+
+    button {
+        width: 32px;
+        height: 32px;
+        border: none;
+        border-radius: 50%;
+        background: var(--surface-2);
+        color: var(--text-soft);
+        cursor: pointer;
+        &:hover { background: var(--surface-3); color: var(--text); }
+    }
+}
+
+.shareMenu {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sp-2);
+
+    button {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-2);
+        min-height: 52px;
+        padding: 0.45rem 0.6rem;
+        border: 1px solid var(--border);
+        border-radius: var(--r-md);
+        background: var(--surface-2);
+        color: var(--text);
+        font: inherit;
+        font-size: var(--fs-xs);
+        text-align: left;
+        cursor: pointer;
+        transition: background var(--t-fast), border-color var(--t-fast), transform 0.1s ease;
+
+        &:hover { background: var(--surface-3); border-color: var(--border-strong); }
+        &:active { transform: scale(0.98); }
+    }
+}
+
+@keyframes shareFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes shareSlideUp {
+    from { transform: translateY(24px); opacity: 0.6; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.socialLogo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    border-radius: 50%;
+    object-fit: contain;
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: var(--fw-bold);
+}
+
+.copyLogo { background: var(--accent); }

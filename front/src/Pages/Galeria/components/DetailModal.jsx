@@ -8,12 +8,11 @@ import { MediaViewer } from '../../../Components/MediaViewer';
 import { ReactionBar } from '../../../Components/ReactionBar';
 import { ErrorBoundary } from '../../../Components/ErrorBoundary';
 import { Copy } from '../../../Components/Icons';
+import { ShareActions } from '../../../Components/ShareActions';
 import { DownloadSelectSheet } from './DownloadSelectSheet';
+import { FiguraForm } from '../../Admin/Figuras/components/FiguraForm';
 import { mediaUrl } from '../../../constants/api';
-import facebookIcon from '../../../assets/social/facebook.svg';
-import instagramIcon from '../../../assets/social/instagram.svg';
-import whatsappIcon from '../../../assets/social/whatsapp.svg';
-import { getCanonicalFiguraIdentifier, getFiguraPath, isFiguraIdentifierFor } from '../figuraUrl';
+import { isFiguraIdentifierFor } from '../figuraUrl';
 
 const SWIPE_THRESHOLD = 40;
 
@@ -28,10 +27,6 @@ const DownloadIcon = ({ all = false }) => (
     </svg>
 );
 
-const SocialIcon = ({ src, className }) => (
-    <img className={className} src={src} alt="" aria-hidden="true" />
-);
-
 const fileNameFromPath = (path, fallback) => {
     const cleanPath = String(path || '').split('?')[0];
     return decodeURIComponent(cleanPath.split('/').pop() || fallback);
@@ -42,8 +37,8 @@ export const DetailModal = ({ ls }) => {
     const { style, identifier, figuraActual, loadingDetail, closeDetail, getTagHref } = ls;
     const [activeIdx, setActiveIdx] = useState(0);
     const [show3D, setShow3D] = useState(false);
-    const [shareMenuOpen, setShareMenuOpen] = useState(false);
     const [selectSheetOpen, setSelectSheetOpen] = useState(false);
+    const [editOpen, setEditOpen] = useState(false);
 
     const open = !!identifier;
     const isLogged = s.auth?.logged === true;
@@ -59,20 +54,9 @@ export const DetailModal = ({ ls }) => {
     useEffect(() => {
         setActiveIdx(0);
         setShow3D(false);
-        setShareMenuOpen(false);
         setSelectSheetOpen(false);
+        setEditOpen(false);
     }, [identifier]);
-
-    useEffect(() => {
-        if (!shareMenuOpen) return;
-        const closeOnEscape = (event) => {
-            if (event.key !== 'Escape') return;
-            event.stopImmediatePropagation();
-            setShareMenuOpen(false);
-        };
-        document.addEventListener('keydown', closeOnEscape);
-        return () => document.removeEventListener('keydown', closeOnEscape);
-    }, [shareMenuOpen]);
 
     const goPrev = useCallback(() => {
         setActiveIdx(i => (i - 1 + gallery.length) % gallery.length);
@@ -107,56 +91,6 @@ export const DetailModal = ({ ls }) => {
         if (dx > 0) goPrev(); else goNext();
     };
 
-    const getShareData = () => {
-        const canonicalIdentifier = getCanonicalFiguraIdentifier(data, identifier);
-        const version = data?.updated_at ? `?v=${encodeURIComponent(data.updated_at)}` : '';
-        const url = `${window.location.origin}${getFiguraPath(canonicalIdentifier)}${version}`;
-        const text = `${data?.nombre || ''}\nCodigo: ${data?.codigo || ''}\n${url}`;
-        return { text, url };
-    };
-
-    const copyShareText = () => {
-        if (!data) return;
-        const { text } = getShareData();
-        navigator.clipboard?.writeText(text)?.then(() => {
-            setShareMenuOpen(false);
-            f.general.notificacion({ title: 'Listo', message: 'Texto copiado al portapapeles', mode: 'success' });
-        });
-    };
-
-    const openShareUrl = (shareUrl) => {
-        window.open(shareUrl, '_blank', 'noopener,noreferrer');
-        setShareMenuOpen(false);
-    };
-
-    const shareNative = async (fallbackUrl) => {
-        if (!data) return;
-        if (!navigator.share) {
-            openShareUrl(fallbackUrl);
-            return;
-        }
-        const { text, url } = getShareData();
-        try {
-            await navigator.share({ title: data.nombre, text, url });
-            setShareMenuOpen(false);
-        } catch (error) {
-            if (error.name !== 'AbortError') {
-                f.general.notificacion({ title: 'No disponible', message: 'No se pudo abrir el menú de compartir', mode: 'danger' });
-            }
-        }
-    };
-
-    const share = () => {
-        setShareMenuOpen(value => !value);
-    };
-
-    const copyCodigo = () => {
-        if (!data?.codigo) return;
-        navigator.clipboard?.writeText(data.codigo).then(() => {
-            f.general.notificacion({ title: 'Listo', message: 'Código copiado al portapapeles', mode: 'success' });
-        });
-    };
-
     const copyText = (text, label) => {
         if (!text) return;
         navigator.clipboard?.writeText(text)?.then(() => {
@@ -164,26 +98,13 @@ export const DetailModal = ({ ls }) => {
         });
     };
 
-    const copyMetadata = () => {
-        if (!isLogged || !data) return;
-
-        const tags = (data.etiquetas || [])
-            .map(tag => String(tag.nombre || '').trim().replace(/\s+/g, ''))
-            .filter(Boolean)
-            .map(tag => `#${tag}`)
-            .join(' ');
-        const hashtags = [tags, '#figures', '#3dprinting', '#3dfigures'].filter(Boolean).join(' ');
-        const canonicalIdentifier = getCanonicalFiguraIdentifier(data, identifier);
-        const url = `${window.location.origin}${getFiguraPath(canonicalIdentifier)}`;
-        const metadata = `${data.nombre || ''}\n${hashtags}\n\nCodigo: ${data.codigo || ''}\n${url}`;
-
-        navigator.clipboard?.writeText(metadata)?.then(() => {
-            f.general.notificacion({ title: 'Listo', message: 'Metadata copiada al portapapeles', mode: 'success' });
-        });
-    };
-
     const openSelectSheet = () => {
         setSelectSheetOpen(true);
+    };
+
+    const handleFiguraSaved = () => {
+        setEditOpen(false);
+        if (data?.id) f.catalogo.getFigura(identifier);
     };
 
     const modalTitle = data ? (
@@ -304,69 +225,10 @@ export const DetailModal = ({ ls }) => {
                     <ReactionBar figuraId={data.id} reacciones={data.reacciones} misReacciones={data.mis_reacciones} />
 
                     <div className={style.actionsRow}>
-                        <div className={style.shareMenuWrap}>
-                            <button type="button" className={style.shareBtn} onClick={share} aria-expanded={shareMenuOpen}>
-                                🔗 Compartir
-                            </button>
-                            {shareMenuOpen && (
-                                <div className={style.shareOverlay} onClick={() => setShareMenuOpen(false)}>
-                                    <div className={style.shareSheet} role="dialog" aria-modal="true" aria-label="Compartir" onClick={event => event.stopPropagation()}>
-                                        <div className={style.shareGrabber} />
-                                        <div className={style.shareSheetHeader}>
-                                            <h2>Compartir</h2>
-                                            <button type="button" onClick={() => setShareMenuOpen(false)} aria-label="Cerrar">✕</button>
-                                        </div>
-                                        <div className={style.shareMenu}>
-                                            <button type="button" onClick={copyShareText}>
-                                                <span className={`${style.socialLogo} ${style.copyLogo}`} aria-hidden="true">📋</span>
-                                                Copiar texto
-                                            </button>
-                                            <button type="button" onClick={() => {
-                                                const { text } = getShareData();
-                                                openShareUrl(`https://wa.me/?text=${encodeURIComponent(text)}`);
-                                            }}>
-                                                <SocialIcon src={whatsappIcon} className={style.socialLogo} />
-                                                WhatsApp
-                                            </button>
-                                            <button type="button" onClick={() => {
-                                                const { url, text } = getShareData();
-                                                openShareUrl(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(text)}`);
-                                            }}>
-                                                <SocialIcon src={facebookIcon} className={style.socialLogo} />
-                                                Facebook
-                                            </button>
-                                            <button type="button" onClick={() => shareNative('https://www.instagram.com/')}>
-                                                <SocialIcon src={instagramIcon} className={style.socialLogo} />
-                                                Instagram
-                                            </button>
-                                            <button type="button" onClick={() => {
-                                                const { text } = getShareData();
-                                                openShareUrl(`whatsapp://send?text=${encodeURIComponent(text)}`);
-                                            }}>
-                                                <SocialIcon src={whatsappIcon} className={style.socialLogo} />
-                                                Historia de WhatsApp
-                                            </button>
-                                            <button type="button" onClick={() => shareNative('https://www.facebook.com/')}>
-                                                <SocialIcon src={facebookIcon} className={style.socialLogo} />
-                                                Historia de Facebook
-                                            </button>
-                                            <button type="button" onClick={() => shareNative('https://www.instagram.com/')}>
-                                                <SocialIcon src={instagramIcon} className={style.socialLogo} />
-                                                Historia de Instagram
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                        {!!data.codigo && (
-                            <button type="button" className={style.shareBtn} onClick={copyCodigo}>
-                                📋 Copiar código
-                            </button>
-                        )}
+                        <ShareActions figura={data} identifier={identifier} isLogged={isLogged} buttonClassName={style.shareBtn} />
                         {isLogged && (
-                            <button type="button" className={style.shareBtn} onClick={copyMetadata}>
-                                📋 Copiar metadata
+                            <button type="button" className={style.shareBtn} onClick={() => setEditOpen(true)}>
+                                ✏️ Editar
                             </button>
                         )}
                     </div>
@@ -381,6 +243,15 @@ export const DetailModal = ({ ls }) => {
                         figuraId={data.id}
                         items={gallery}
                     />
+
+                    {isLogged && (
+                        <FiguraForm
+                            open={editOpen}
+                            figuraId={data.id}
+                            onClose={() => setEditOpen(false)}
+                            onSaved={handleFiguraSaved}
+                        />
+                    )}
                 </div>
             )}
         </SheetModal>
