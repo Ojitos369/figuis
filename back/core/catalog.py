@@ -132,6 +132,12 @@ def canonical_identifier(name: Any, tags: Iterable[Any] | None, collection_id: A
     return f"{collection_slug(name, tags)}--{normalize_uuid(collection_id)}"
 
 
+def tag_identifier(name: Any, tag_id: Any) -> str:
+    """Return the stable public identifier for a real catalog tag."""
+
+    return f"{slugify(name, fallback='etiqueta')}--{normalize_uuid(tag_id)}"
+
+
 def short_code(collection_id: Any) -> str:
     """Match the catalog's deterministic six-character public code."""
 
@@ -375,7 +381,8 @@ def _as_int(value: Any, default: int = 0) -> int:
 
 
 def _clean_query(query: Any) -> str:
-    return " ".join(str(query or "").split())[:MAX_QUERY_LENGTH]
+    clean = " ".join(str(query or "").split()).lstrip("#").lstrip()
+    return clean[:MAX_QUERY_LENGTH]
 
 
 def _escape_like(value: str) -> str:
@@ -440,6 +447,9 @@ class CatalogRepository(ClassBase):
     def _canonical_url(self, identifier: str) -> str | None:
         return build_public_url(self.base_url, "figura", identifier) if self.base_url else None
 
+    def _tag_canonical_url(self, identifier: str) -> str | None:
+        return build_public_url(self.base_url, "etiqueta", identifier) if self.base_url else None
+
     def _media_fields(self, raw_path: Any) -> tuple[str | None, str | None]:
         path = media_public_path(raw_path, base_url=self.base_url)
         url = absolute_media_url(self.base_url, raw_path) if self.base_url else None
@@ -449,7 +459,12 @@ class CatalogRepository(ClassBase):
         collection_id = normalize_uuid(row.get("id", row.get("figura_id")))
         name = str(row.get("nombre") or "").strip()
         description = row.get("descripcion")
-        tags = _normalize_tags(row.get("tags", row.get("etiquetas", row.get("tag_names"))))
+        tags = [
+            self._tag_reference(tag)
+            for tag in _normalize_tags(
+                row.get("tags", row.get("etiquetas", row.get("tag_names")))
+            )
+        ]
         identifier = canonical_identifier(name, tags, collection_id)
         url = self._canonical_url(identifier)
         code = short_code(collection_id)
@@ -472,6 +487,50 @@ class CatalogRepository(ClassBase):
             "canonical_url": url,
             "url": url,
         }
+
+    def _tag_reference(self, row: Mapping[str, Any]) -> dict[str, Any]:
+        name = _tag_name(row)
+        item: dict[str, Any] = {
+            "nombre": name,
+            "name": name,
+            "title": name,
+            "slug": slugify(name, fallback="etiqueta"),
+        }
+        tag_id = str(row.get("id") or "").strip()
+        if tag_id:
+            try:
+                clean_id = normalize_uuid(tag_id)
+            except ValueError:
+                clean_id = ""
+            if clean_id:
+                identifier = tag_identifier(name, clean_id)
+                canonical_url = self._tag_canonical_url(identifier)
+                item.update(
+                    {
+                        "id": clean_id,
+                        "canonical_id": identifier,
+                        "identifier": identifier,
+                        "canonical_url": canonical_url,
+                        "url": canonical_url,
+                    }
+                )
+        if row.get("color") is not None:
+            item["color"] = row.get("color")
+        return item
+
+    def _tag_item(self, row: Mapping[str, Any]) -> dict[str, Any]:
+        item = self._tag_reference(row)
+        collection_count = max(_as_int(row.get("collection_count")), 0)
+        model_count = max(_as_int(row.get("model_count")), 0)
+        item.update(
+            {
+                "collection_count": collection_count,
+                "model_count": model_count,
+                "has_3d_model": model_count > 0,
+                "updated_at": row.get("updated_at"),
+            }
+        )
+        return item
 
     def _collection_item(self, row: Mapping[str, Any]) -> dict[str, Any]:
         item = self._collection_reference(row)
@@ -567,7 +626,12 @@ class CatalogRepository(ClassBase):
             FROM figuras f
         """
 
-    def _filters(self, query: Any = None, tags: Iterable[Any] | None = None) -> tuple[str, dict[str, Any]]:
+    def _filters(
+        self,
+        query: Any = None,
+        tags: Iterable[Any] | None = None,
+        tag_ids: Iterable[Any] | None = None,
+    ) -> tuple[str, dict[str, Any]]:
         conditions = ["f.estatus = 'publico'"]
         params: dict[str, Any] = {}
         clean_query = _clean_query(query)
@@ -585,8 +649,14 @@ class CatalogRepository(ClassBase):
                     )
                 )"""
             )
-        tag_values = [tags] if isinstance(tags, (str, bytes, Mapping)) else (tags or ())
+        tag_values = (
+            [tags]
+            if isinstance(tags, (str, bytes, Mapping))
+            else list(tags or ())
+        )
         clean_tags = sorted({_tag_name(tag).lower() for tag in tag_values if _tag_name(tag)})[:MAX_TAG_FILTERS]
+        if tag_values and not clean_tags:
+            conditions.append("FALSE")
         for index, tag in enumerate(clean_tags):
             key = f"tag_{index}"
             params[key] = tag
@@ -595,7 +665,32 @@ class CatalogRepository(ClassBase):
                     SELECT 1 FROM figura_etiquetas fe_filter_{index}
                     JOIN etiquetas e_filter_{index} ON e_filter_{index}.id = fe_filter_{index}.etiqueta_id
                     WHERE fe_filter_{index}.figura_id = f.id
-                      AND lower(e_filter_{index}.nombre) = :{key}
+                      AND lower(btrim(ltrim(btrim(e_filter_{index}.nombre), '#'))) = :{key}
+                )"""
+            )
+
+        raw_tag_ids = (
+            [tag_ids]
+            if isinstance(tag_ids, (str, bytes, Mapping))
+            else list(tag_ids or ())
+        )
+        clean_tag_ids: list[str] = []
+        invalid_tag_id = False
+        for raw_tag_id in raw_tag_ids[:MAX_TAG_FILTERS]:
+            try:
+                clean_tag_ids.append(normalize_uuid(raw_tag_id))
+            except ValueError:
+                invalid_tag_id = True
+        if invalid_tag_id or (raw_tag_ids and not clean_tag_ids):
+            conditions.append("FALSE")
+        for index, tag_id in enumerate(sorted(set(clean_tag_ids))):
+            key = f"tag_id_{index}"
+            params[key] = tag_id
+            conditions.append(
+                f"""EXISTS (
+                    SELECT 1 FROM figura_etiquetas fe_filter_id_{index}
+                    WHERE fe_filter_id_{index}.figura_id = f.id
+                      AND fe_filter_id_{index}.etiqueta_id = :{key}
                 )"""
             )
         return " AND ".join(conditions), params
@@ -605,11 +700,12 @@ class CatalogRepository(ClassBase):
         query: Any = None,
         *,
         tags: Iterable[Any] | None = None,
+        tag_ids: Iterable[Any] | None = None,
         page: Any = 1,
         page_size: Any = DEFAULT_PAGE_SIZE,
     ) -> dict[str, Any]:
         page, page_size = normalize_pagination(page, page_size)
-        filters, params = self._filters(query, tags)
+        filters, params = self._filters(query, tags, tag_ids)
         total = self._total(
             f"""/* public_catalog.collection_list.count */
                 SELECT COUNT(*) AS total FROM figuras f WHERE {filters}
@@ -636,6 +732,128 @@ class CatalogRepository(ClassBase):
                 "pages": math.ceil(total / page_size) if total else 0,
             }
         )
+
+    @staticmethod
+    def _public_tag_select_sql() -> str:
+        return """
+            SELECT e.id, e.nombre, e.color,
+                COUNT(DISTINCT f.id) AS collection_count,
+                COALESCE(SUM((
+                    SELECT COUNT(*)
+                    FROM figura_archivos fa
+                    WHERE fa.figura_id = f.id AND fa.tipo = 'modelo_3d'
+                )), 0) AS model_count,
+                MAX(f.updated_at) AS updated_at
+            FROM etiquetas e
+            JOIN figura_etiquetas fe ON fe.etiqueta_id = e.id
+            JOIN figuras f ON f.id = fe.figura_id
+            WHERE f.estatus = 'publico'
+              AND btrim(ltrim(btrim(e.nombre), '#')) <> ''
+        """
+
+    def list_public_tags(
+        self,
+        *,
+        page: Any = 1,
+        page_size: Any = DEFAULT_PAGE_SIZE,
+    ) -> dict[str, Any]:
+        """List only tags that classify at least one public collection."""
+
+        page, page_size = normalize_pagination(page, page_size)
+        total = self._total(
+            """/* public_catalog.tag_list.count */
+                SELECT COUNT(DISTINCT e.id) AS total
+                FROM etiquetas e
+                JOIN figura_etiquetas fe ON fe.etiqueta_id = e.id
+                JOIN figuras f ON f.id = fe.figura_id
+                WHERE f.estatus = 'publico'
+                  AND btrim(ltrim(btrim(e.nombre), '#')) <> ''
+            """
+        )
+        rows = self._query(
+            f"""/* public_catalog.tag_list.items */
+                {self._public_tag_select_sql()}
+                GROUP BY e.id, e.nombre, e.color
+                ORDER BY COUNT(DISTINCT f.id) DESC, lower(e.nombre) ASC, e.id ASC
+                LIMIT :limit OFFSET :offset
+            """,
+            {"limit": page_size, "offset": (page - 1) * page_size},
+        )
+        return to_json_safe(
+            {
+                "items": [self._tag_item(row) for row in rows],
+                "page": page,
+                "page_size": page_size,
+                "total": total,
+                "pages": math.ceil(total / page_size) if total else 0,
+            }
+        )
+
+    def _tag_identity_by_uuid(self, tag_id: str) -> dict[str, Any] | None:
+        rows = self._query(
+            f"""/* public_catalog.tag_resolve.by_uuid */
+                {self._public_tag_select_sql()}
+                  AND e.id = :id
+                GROUP BY e.id, e.nombre, e.color
+            """,
+            {"id": tag_id},
+        )
+        return rows[0] if rows else None
+
+    def _all_tag_identities(self) -> list[dict[str, Any]]:
+        return self._query(
+            f"""/* public_catalog.tag_resolve.by_slug */
+                {self._public_tag_select_sql()}
+                GROUP BY e.id, e.nombre, e.color
+                ORDER BY e.id ASC
+            """
+        )
+
+    def _resolve_tag(self, identifier: Any) -> dict[str, Any] | None:
+        raw = str(identifier or "").strip()
+        if not raw or len(raw) > 512 or _CONTROL_RE.search(raw):
+            return None
+        identity: dict[str, Any] | None = None
+        resolution = ""
+        try:
+            clean_id = normalize_uuid(raw)
+            identity = self._tag_identity_by_uuid(clean_id)
+            resolution = "uuid"
+        except ValueError:
+            suffix = _UUID_SUFFIX_RE.search(raw)
+            if suffix:
+                clean_id = normalize_uuid(suffix.group(1))
+                identity = self._tag_identity_by_uuid(clean_id)
+                resolution = "canonical"
+            elif len(raw) <= 180 and _PURE_SLUG_RE.fullmatch(raw):
+                matches = []
+                for row in self._all_tag_identities():
+                    if slugify(row.get("nombre"), fallback="etiqueta") == raw:
+                        matches.append(row)
+                        if len(matches) > 1:
+                            return None
+                identity = matches[0] if matches else None
+                resolution = "slug"
+        if identity is None:
+            return None
+        item = self._tag_item(identity)
+        canonical = item.get("canonical_id")
+        if not canonical:
+            return None
+        if resolution == "canonical" and raw != canonical:
+            resolution = "stale"
+        item.update(
+            {
+                "requested_identifier": raw,
+                "resolution": resolution,
+                "is_canonical": raw == canonical,
+            }
+        )
+        return item
+
+    def get_public_tag(self, identifier: Any) -> dict[str, Any] | None:
+        resolved = self._resolve_tag(identifier)
+        return to_json_safe(resolved) if resolved is not None else None
 
     def _identity_by_uuid(self, collection_id: str) -> dict[str, Any] | None:
         rows = self._query(
@@ -969,13 +1187,41 @@ def list_collections(
     query: Any = None,
     *,
     tags: Iterable[Any] | None = None,
+    tag_ids: Iterable[Any] | None = None,
     page: Any = 1,
     page_size: Any = DEFAULT_PAGE_SIZE,
     base_url: str = "",
     connection: Any | None = None,
 ) -> dict[str, Any]:
     with _repository(connection, base_url) as repository:
-        return repository.list_collections(query, tags=tags, page=page, page_size=page_size)
+        return repository.list_collections(
+            query,
+            tags=tags,
+            tag_ids=tag_ids,
+            page=page,
+            page_size=page_size,
+        )
+
+
+def list_public_tags(
+    *,
+    page: Any = 1,
+    page_size: Any = DEFAULT_PAGE_SIZE,
+    base_url: str = "",
+    connection: Any | None = None,
+) -> dict[str, Any]:
+    with _repository(connection, base_url) as repository:
+        return repository.list_public_tags(page=page, page_size=page_size)
+
+
+def get_public_tag(
+    identifier: Any,
+    *,
+    base_url: str = "",
+    connection: Any | None = None,
+) -> dict[str, Any] | None:
+    with _repository(connection, base_url) as repository:
+        return repository.get_public_tag(identifier)
 
 
 def search_catalog(
@@ -1056,8 +1302,10 @@ __all__ = [
     "get_catalog_resource",
     "get_collection",
     "get_media",
+    "get_public_tag",
     "list_collection_media",
     "list_collections",
+    "list_public_tags",
     "media_public_path",
     "normalize_base_url",
     "normalize_pagination",
@@ -1067,5 +1315,6 @@ __all__ = [
     "search_models",
     "short_code",
     "slugify",
+    "tag_identifier",
     "to_json_safe",
 ]

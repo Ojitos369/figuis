@@ -1,24 +1,41 @@
 import { getVisitorId } from '../../../Core/visitor';
 
 let figuraRequestSequence = 0;
+let figurasRequestSequence = 0;
+let tagRequestSequence = 0;
 
 export const catalogo = props => {
-    const { miAxios, s, u1, u2, notificacion } = props;
+    const { miAxios, u1, u2, notificacion } = props;
 
     const getFiguras = (params = {}) => {
-        if (s.loadings?.catalogo?.figuras) return;
+        const requestSequence = ++figurasRequestSequence;
         u2("loadings", "catalogo", "figuras", true);
         miAxios.get("catalogo/figuras", { params })
             .then(res => {
+                if (requestSequence !== figurasRequestSequence) return;
                 u1("catalogo", "figuras", res.data.data || []);
                 u1("catalogo", "pagination", res.data.pagination || null);
             })
             .catch(() => {
-                if (notificacion) notificacion({ message: "No se pudieron cargar las figuras", title: "Error", mode: "danger" });
+                if (requestSequence === figurasRequestSequence && notificacion) {
+                    notificacion({ message: "No se pudieron cargar las figuras", title: "Error", mode: "danger" });
+                }
             })
             .finally(() => {
-                u2("loadings", "catalogo", "figuras", false);
+                if (requestSequence === figurasRequestSequence) {
+                    u2("loadings", "catalogo", "figuras", false);
+                }
             });
+    };
+
+    const resetFiguras = () => {
+        // Al cambiar entre el catálogo general y una landing de etiqueta no se
+        // deben mostrar resultados de la ruta anterior mientras se resuelve la
+        // nueva. El contador también invalida cualquier respuesta en vuelo.
+        figurasRequestSequence += 1;
+        u1("catalogo", "figuras", []);
+        u1("catalogo", "pagination", null);
+        u2("loadings", "catalogo", "figuras", false);
     };
 
     const getFiguraPagina = (id, params = {}, onDone) => {
@@ -61,6 +78,29 @@ export const catalogo = props => {
             .catch(() => {});
     };
 
+    const getTag = (identifier, onDone) => {
+        const requestSequence = ++tagRequestSequence;
+        u2("loadings", "catalogo", "tag", true);
+        u1("catalogo", "tagActual", null);
+        miAxios.get(`public/v1/tags/${encodeURIComponent(identifier)}`)
+            .then(res => {
+                if (requestSequence !== tagRequestSequence) return;
+                const data = res.data?.data ?? res.data;
+                u1("catalogo", "tagActual", data || false);
+                if (onDone) onDone(data || null);
+            })
+            .catch(() => {
+                if (requestSequence !== tagRequestSequence) return;
+                u1("catalogo", "tagActual", false);
+                if (onDone) onDone(null);
+            })
+            .finally(() => {
+                if (requestSequence === tagRequestSequence) {
+                    u2("loadings", "catalogo", "tag", false);
+                }
+            });
+    };
+
     const getReacciones = () => {
         miAxios.get("catalogo/reacciones_disponibles")
             .then(res => {
@@ -77,5 +117,14 @@ export const catalogo = props => {
             });
     };
 
-    return { getFiguras, getFiguraPagina, getFigura, getEtiquetas, getReacciones, toggleReaccion };
+    return {
+        getFiguras,
+        resetFiguras,
+        getFiguraPagina,
+        getFigura,
+        getEtiquetas,
+        getTag,
+        getReacciones,
+        toggleReaccion,
+    };
 };

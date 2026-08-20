@@ -70,6 +70,19 @@ class McpToolContractTests(unittest.TestCase):
         self.assertEqual(result["results"][1]["title"], "Robot - robot.stl")
         self.assertTrue(all(item["url"].startswith("http") for item in result["results"]))
 
+    def test_search_normalizes_hash_prefixed_tag_queries(self):
+        calls = []
+
+        def catalog_call(operation, *args, **kwargs):
+            calls.append((operation, args, kwargs))
+            return page([])
+
+        with patch.object(mcp_server, "_call_catalog", side_effect=catalog_call):
+            result = mcp_server.search(" #twice ")
+
+        self.assertEqual(result, {"results": []})
+        self.assertEqual([call[1][0] for call in calls], ["twice", "twice"])
+
     def test_fetch_is_read_only_scoped_and_strips_commerce_fields(self):
         def catalog_call(operation, *args, **kwargs):
             if operation == "get_catalog_resource":

@@ -4,9 +4,18 @@ import { FigCardSkeleton } from './FigCardSkeleton';
 const SKELETON_COUNT = 8;
 
 export const FigurasGrid = ({ ls }) => {
-    const { style, figuras, loading, openDetail } = ls;
+    const { style, figuras, loading, openDetail, getTagHref, tagNotFound, loadingTag } = ls;
 
-    if (loading && !figuras.length) {
+    if (tagNotFound) {
+        return (
+            <div className={style.emptyState} role="status">
+                <div className={style.emptyIcon}>🏷️</div>
+                La etiqueta solicitada no existe o ya no está disponible.
+            </div>
+        );
+    }
+
+    if ((loading || loadingTag) && !figuras.length) {
         return (
             <div className={style.grid}>
                 {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
@@ -28,7 +37,14 @@ export const FigurasGrid = ({ ls }) => {
     return (
         <div className={style.grid}>
             {figuras.map((f, i) => (
-                <FigCard key={f.id} figura={f} style={style} onOpen={openDetail} enterDelay={Math.min(i, 11) * 30} />
+                <FigCard
+                    key={f.id}
+                    figura={f}
+                    style={style}
+                    onOpen={openDetail}
+                    getTagHref={getTagHref}
+                    enterDelay={Math.min(i, 11) * 30}
+                />
             ))}
         </div>
     );

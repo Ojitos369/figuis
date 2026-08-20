@@ -1,11 +1,79 @@
 import { useEffect, useMemo, useCallback, useRef } from 'react';
-import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { useStates, createState } from '../../Hooks/useStates';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useStates } from '../../Hooks/useStates';
+import { DEFAULT_DESCRIPTION, DEFAULT_TITLE, SITE_ALIAS } from '../../constants/seo';
 import style from './styles/index.module.scss';
 import { getCanonicalFiguraIdentifier, getFiguraPath, isFiguraIdentifierFor } from './figuraUrl';
+import {
+    getCanonicalTagIdentifier,
+    getTagName,
+    getTagPath,
+    isTagIdentifierFor,
+} from './tagUrl';
 
-const DEFAULT_TITLE = 'Figuis · Catálogo de colecciones y modelos 3D';
-const DEFAULT_DESCRIPTION = 'Catálogo público de colecciones, figuras, imágenes y modelos 3D para consulta e inspiración.';
+const FILTER_PARAM_KEYS = ['s', 'tags', 'reacciones', 'orden', 'desde', 'hasta', 'page', 'limit'];
+const DEFAULT_ORDER = 'fecha_desc';
+const DEFAULT_LIMIT = 24;
+
+const uniqueList = (values) => [...new Set(values.map(value => String(value).trim()).filter(Boolean))];
+
+const readListParam = (params, key) => uniqueList((params.get(key) || '').split(','));
+
+const readPositiveInt = (params, key, fallback) => {
+    const value = Number.parseInt(params.get(key) || '', 10);
+    return Number.isSafeInteger(value) && value > 0 ? value : fallback;
+};
+
+const cleanMetaText = (value, maxLength = 160) => String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength);
+
+const collectionDocumentTitle = (collection) => {
+    const name = cleanMetaText(collection?.nombre || collection?.name || 'Colección', 80);
+    const foldedName = name.toLocaleLowerCase('es-MX');
+    const seen = new Set();
+    const tags = (collection?.etiquetas || collection?.tags || [])
+        .map(getTagName)
+        .filter(tag => {
+            const foldedTag = tag.toLocaleLowerCase('es-MX');
+            if (!foldedTag || foldedName.includes(foldedTag) || seen.has(foldedTag)) return false;
+            seen.add(foldedTag);
+            return true;
+        })
+        .slice(0, 2);
+    const qualifier = tags.length ? ` · ${tags.join(', ')}` : '';
+    return cleanMetaText(`${name}${qualifier} | ${SITE_ALIAS}`, 120);
+};
+
+const collectionMetaDescription = (collection) => {
+    const name = cleanMetaText(collection?.nombre || collection?.name || 'Esta colección', 80);
+    const tags = (collection?.etiquetas || collection?.tags || []).map(getTagName).filter(Boolean);
+    const editorial = cleanMetaText(collection?.descripcion || collection?.description, 160);
+    const lead = tags.length
+        ? `${name} en ${SITE_ALIAS} está clasificada en ${tags.slice(0, 4).join(', ')}.`
+        : `Explora ${name} en el catálogo público de ${SITE_ALIAS}.`;
+    return cleanMetaText(`${lead}${editorial ? ` ${editorial}` : ''}`, 220);
+};
+
+const resolvePublicOrigin = () => {
+    const canonicalHref = document.head.querySelector('link[rel="canonical"]')?.getAttribute('href');
+    try {
+        const canonical = new URL(canonicalHref || '/', window.location.origin);
+        if (canonical.protocol === 'http:' || canonical.protocol === 'https:') return canonical.origin;
+    } catch {
+        // En Vite puede no existir canonical; el origen actual sigue siendo válido.
+    }
+    return window.location.origin;
+};
+
+const absolutePublicUrl = (value, origin) => {
+    try {
+        return new URL(value, origin).href;
+    } catch {
+        return origin;
+    }
+};
 
 const setMetaContent = (attribute, key, content) => {
     let element = document.head.querySelector(`meta[${attribute}="${key}"]`);
@@ -27,9 +95,10 @@ const setCanonicalUrl = (url) => {
     element.setAttribute('href', url);
 };
 
-const updateDocumentMetadata = ({ title, description, url }) => {
+const updateDocumentMetadata = ({ title, description, url, robots = 'index,follow,max-image-preview:large' }) => {
     document.title = title;
     setMetaContent('name', 'description', description);
+    setMetaContent('name', 'robots', robots);
     setMetaContent('property', 'og:title', title);
     setMetaContent('property', 'og:description', description);
     setMetaContent('property', 'og:url', url);
@@ -39,11 +108,10 @@ const updateDocumentMetadata = ({ title, description, url }) => {
 };
 
 export const localStates = () => {
-    const { s, f } = useStates();
-    const { identifier } = useParams();
+    const { s } = useStates();
+    const { identifier, tagIdentifier } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
-    const [searchParams, setSearchParams] = useSearchParams();
 
     const figuras = useMemo(() => s.catalogo?.figuras || [], [s.catalogo?.figuras]);
     const pagination = useMemo(() => s.catalogo?.pagination || null, [s.catalogo?.pagination]);
@@ -53,158 +121,241 @@ export const localStates = () => {
 
     const figuraActual = useMemo(() => s.catalogo?.figuraActual, [s.catalogo?.figuraActual]);
     const loadingDetail = useMemo(() => s.loadings?.catalogo?.figura, [s.loadings?.catalogo?.figura]);
+    const rawTagActual = useMemo(() => s.catalogo?.tagActual, [s.catalogo?.tagActual]);
+    const loadingTag = useMemo(() => s.loadings?.catalogo?.tag, [s.loadings?.catalogo?.tag]);
 
-    const [q, setQ] = createState(['galeria', 'q'], '');
-    const [selectedTags, setSelectedTags] = createState(['galeria', 'selectedTags'], []);
-    const [selectedReacciones, setSelectedReacciones] = createState(['galeria', 'selectedReacciones'], []);
-    const [page, setPage] = createState(['galeria', 'page'], 1);
-    const [orden, setOrdenRaw] = createState(['galeria', 'orden'], 'fecha_desc');
-    const [desde, setDesde] = createState(['galeria', 'desde'], '');
-    const [hasta, setHasta] = createState(['galeria', 'hasta'], '');
-    const [limit, setLimit] = createState(['galeria', 'limit'], 24);
-
-    // El sheet de filtros se abre/cierra con el router (?filtros=1), no con un
-    // booleano suelto: asi el boton "atras" del navegador tambien lo cierra.
-    const filtersOpen = searchParams.get('filtros') === '1';
-    const openFilters = useCallback(() => {
+    // La URL es la fuente de verdad: links compartidos, recargas y back/forward
+    // reproducen exactamente la misma consulta sin una segunda copia en Redux.
+    const filters = useMemo(() => {
         const params = new URLSearchParams(location.search);
-        params.set('filtros', '1');
-        navigate(`${location.pathname}?${params.toString()}`);
-    }, [navigate, location.pathname, location.search]);
-    const closeFilters = useCallback(() => {
-        navigate(-1);
-    }, [navigate]);
-    const applyFilters = useCallback(() => {
-        setPage(1);
-        f.catalogo.getFiguras({
-            q: q || undefined,
-            etiquetas: selectedTags.length ? selectedTags.join(',') : undefined,
-            reacciones: selectedReacciones.length ? selectedReacciones.join(',') : undefined,
-            orden: orden || undefined,
-            desde: desde || undefined,
-            hasta: hasta || undefined,
-            page: 1,
-            limit,
+        return {
+            q: params.get('s') || '',
+            selectedTags: readListParam(params, 'tags'),
+            selectedReacciones: readListParam(params, 'reacciones'),
+            page: readPositiveInt(params, 'page', 1),
+            orden: params.get('orden') || DEFAULT_ORDER,
+            desde: params.get('desde') || '',
+            hasta: params.get('hasta') || '',
+            limit: readPositiveInt(params, 'limit', DEFAULT_LIMIT),
+            filtersOpen: params.get('filtros') === '1',
+        };
+    }, [location.search]);
+
+    const {
+        q, selectedTags, selectedReacciones, page, orden,
+        desde, hasta, limit, filtersOpen,
+    } = filters;
+
+    const tagActual = useMemo(() => (
+        tagIdentifier && rawTagActual && isTagIdentifierFor(tagIdentifier, rawTagActual)
+            ? rawTagActual
+            : null
+    ), [tagIdentifier, rawTagActual]);
+    const tagNotFound = !!tagIdentifier && rawTagActual === false;
+    const routeTagFilter = tagActual?.id || getTagName(tagActual);
+
+    const effectiveSelectedTags = useMemo(
+        () => uniqueList([routeTagFilter, ...selectedTags]),
+        [routeTagFilter, selectedTags]
+    );
+
+    const selectedTagDetails = useMemo(() => effectiveSelectedTags.map(tagId => {
+        if (tagActual && String(tagActual.id || getTagName(tagActual)) === String(tagId)) return tagActual;
+        return etiquetas.find(tag => String(tag.id) === String(tagId)) || { id: tagId, nombre: '' };
+    }), [effectiveSelectedTags, etiquetas, tagActual]);
+
+    const updateParams = useCallback((changes, { pathname = location.pathname, replace = true } = {}) => {
+        const params = new URLSearchParams(location.search);
+        Object.entries(changes).forEach(([key, value]) => {
+            if (value === undefined || value === null || value === '' || value === false) params.delete(key);
+            else params.set(key, String(value));
         });
-        navigate('/');
-    }, [navigate, f.catalogo, q, selectedTags, selectedReacciones, orden, desde, hasta, limit]);
+        const query = params.toString();
+        navigate(`${pathname}${query ? `?${query}` : ''}`, { replace, state: location.state });
+    }, [location.pathname, location.search, location.state, navigate]);
+
+    const openFilters = useCallback(() => {
+        updateParams({ filtros: '1' }, { replace: false });
+    }, [updateParams]);
+
+    const closeFilters = useCallback(() => navigate(-1), [navigate]);
+
+    const applyFilters = useCallback(() => {
+        updateParams({ filtros: null, page: null });
+    }, [updateParams]);
 
     const toggleTag = useCallback((tagId) => {
-        const next = selectedTags.includes(tagId)
-            ? selectedTags.filter(t => t !== tagId)
-            : [...selectedTags, tagId];
-        setSelectedTags(next);
-        setPage(1);
-    }, [selectedTags]);
+        const normalizedId = String(tagId);
+        const routeId = tagActual?.id == null ? '' : String(tagActual.id);
+
+        if (routeId && routeId === normalizedId) {
+            const next = selectedTags.filter(value => String(value) !== normalizedId);
+            updateParams({ tags: next.length ? next.join(',') : null, page: null }, { pathname: '/' });
+            return;
+        }
+
+        const next = selectedTags.includes(normalizedId)
+            ? selectedTags.filter(value => value !== normalizedId)
+            : [...selectedTags, normalizedId];
+        updateParams({ tags: next.length ? next.join(',') : null, page: null });
+    }, [selectedTags, tagActual, updateParams]);
 
     const toggleReaccionFiltro = useCallback((emoji) => {
         const next = selectedReacciones.includes(emoji)
-            ? selectedReacciones.filter(e => e !== emoji)
+            ? selectedReacciones.filter(value => value !== emoji)
             : [...selectedReacciones, emoji];
-        setSelectedReacciones(next);
-        setPage(1);
-    }, [selectedReacciones]);
+        updateParams({ reacciones: next.length ? next.join(',') : null, page: null });
+    }, [selectedReacciones, updateParams]);
 
-    const setQAndResetPage = useCallback((value) => {
-        setQ(value);
-        setPage(1);
-    }, []);
-
-    const setOrden = useCallback((value) => {
-        setOrdenRaw(value);
-        setPage(1);
-    }, []);
+    const setQ = useCallback(value => updateParams({ s: value || null, page: null }), [updateParams]);
+    const setOrden = useCallback(value => updateParams({ orden: value === DEFAULT_ORDER ? null : value, page: null }), [updateParams]);
+    const setDesde = useCallback(value => updateParams({ desde: value || null, page: null }), [updateParams]);
+    const setHasta = useCallback(value => updateParams({ hasta: value || null, page: null }), [updateParams]);
+    const setPage = useCallback(value => updateParams({ page: Number(value) === 1 ? null : value }), [updateParams]);
 
     const clearFilters = useCallback(() => {
-        setQ('');
-        setSelectedTags([]);
-        setSelectedReacciones([]);
-        setOrdenRaw('fecha_desc');
-        setDesde('');
-        setHasta('');
-        setPage(1);
-    }, []);
+        const changes = Object.fromEntries(FILTER_PARAM_KEYS.map(key => [key, null]));
+        updateParams(changes, { pathname: '/' });
+    }, [updateParams]);
 
     const activeFiltersCount = useMemo(
-        () => selectedTags.length + selectedReacciones.length + (orden !== 'fecha_desc' ? 1 : 0) + (q ? 1 : 0) + (desde ? 1 : 0) + (hasta ? 1 : 0),
-        [selectedTags, selectedReacciones, orden, q, desde, hasta]
+        () => effectiveSelectedTags.length
+            + selectedReacciones.length
+            + (orden !== DEFAULT_ORDER ? 1 : 0)
+            + (q ? 1 : 0)
+            + (desde ? 1 : 0)
+            + (hasta ? 1 : 0),
+        [effectiveSelectedTags, selectedReacciones, orden, q, desde, hasta]
     );
 
-    const getPageHref = useCallback((p) => {
+    const hasArbitraryFilters = Boolean(
+        q
+        || selectedTags.length
+        || selectedReacciones.length
+        || orden !== DEFAULT_ORDER
+        || desde
+        || hasta
+        || page !== 1
+        || limit !== DEFAULT_LIMIT
+    );
+
+    const getPageHref = useCallback((nextPage) => {
         const params = new URLSearchParams(location.search);
-        if (p > 1) params.set('page', String(p));
+        params.delete('filtros');
+        if (nextPage > 1) params.set('page', String(nextPage));
         else params.delete('page');
-        const qs = params.toString();
-        return `${location.pathname}${qs ? `?${qs}` : ''}`;
+        const query = params.toString();
+        return `${location.pathname}${query ? `?${query}` : ''}`;
     }, [location.pathname, location.search]);
 
+    const getTagHref = useCallback((tagOrId) => {
+        if (typeof tagOrId === 'object' && tagOrId) return getTagPath(tagOrId);
+        const matchingTag = etiquetas.find(tag => String(tag.id) === String(tagOrId));
+        return getTagPath(matchingTag || tagOrId);
+    }, [etiquetas]);
+
     const openDetail = useCallback((figuraIdentifier) => {
-        navigate(`${getFiguraPath(figuraIdentifier)}${location.search}`);
-    }, [navigate, location.search]);
+        const params = new URLSearchParams(location.search);
+        if (tagActual?.id) {
+            const contextTags = uniqueList([tagActual.id, ...readListParam(params, 'tags')]);
+            params.set('tags', contextTags.join(','));
+        }
+        const query = params.toString();
+        navigate(`${getFiguraPath(figuraIdentifier)}${query ? `?${query}` : ''}`, {
+            state: {
+                catalogPath: location.pathname,
+                catalogSearch: location.search,
+            },
+        });
+    }, [navigate, location.pathname, location.search, tagActual]);
 
     const replaceDetailIdentifier = useCallback((canonicalIdentifier) => {
         if (!canonicalIdentifier || String(canonicalIdentifier) === identifier) return;
-        navigate(`${getFiguraPath(canonicalIdentifier)}${location.search}`, { replace: true });
-    }, [identifier, navigate, location.search]);
+        navigate(`${getFiguraPath(canonicalIdentifier)}${location.search}`, {
+            replace: true,
+            state: location.state,
+        });
+    }, [identifier, navigate, location.search, location.state]);
+
+    const replaceTagIdentifier = useCallback((canonicalIdentifier) => {
+        if (!canonicalIdentifier || String(canonicalIdentifier) === tagIdentifier) return;
+        navigate(`${getTagPath(canonicalIdentifier)}${location.search}`, {
+            replace: true,
+            state: location.state,
+        });
+    }, [tagIdentifier, navigate, location.search, location.state]);
 
     const closeDetail = useCallback(() => {
-        navigate(`/${location.search}`);
-    }, [navigate, location.search]);
+        if (location.state?.catalogPath) {
+            navigate(-1);
+            return;
+        }
+        navigate(`/${location.search}`, { replace: true });
+    }, [navigate, location.search, location.state]);
 
-    // Hidrata los filtros/pagina/limite desde la URL al entrar (link
-    // compartido, recarga de pagina): solo corre una vez al montar.
-    useEffect(() => {
-        const spQ = searchParams.get('s');
-        const spTags = searchParams.get('tags');
-        const spReacciones = searchParams.get('reacciones');
-        const spOrden = searchParams.get('orden');
-        const spDesde = searchParams.get('desde');
-        const spHasta = searchParams.get('hasta');
-        const spLimit = searchParams.get('limit');
-        const spPage = searchParams.get('page');
+    const tagNames = selectedTagDetails.map(getTagName).filter(Boolean);
+    const cleanQuery = cleanMetaText(q, 80);
+    const total = Number.isFinite(Number(pagination?.total)) ? Number(pagination.total) : null;
+    const totalLabel = total === null
+        ? 'colecciones públicas'
+        : `${total} ${total === 1 ? 'colección pública' : 'colecciones públicas'}`;
+    const tagName = getTagName(tagActual);
+    const tagDisplayName = tagName
+        ? `${tagName.slice(0, 1).toLocaleUpperCase('es-MX')}${tagName.slice(1)}`
+        : '';
 
-        if (spQ !== null) setQ(spQ);
-        if (spTags) setSelectedTags(spTags.split(',').filter(Boolean));
-        if (spReacciones) setSelectedReacciones(spReacciones.split(',').filter(Boolean));
-        if (spOrden) setOrdenRaw(spOrden);
-        if (spDesde) setDesde(spDesde);
-        if (spHasta) setHasta(spHasta);
-        if (spLimit) setLimit(Number(spLimit) || 24);
-        if (spPage) setPage(Number(spPage) || 1);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    let catalogHeading = `${SITE_ALIAS}: figuras 3D, K-pop y coleccionables`;
+    if (tagNotFound) catalogHeading = 'Etiqueta no encontrada';
+    else if (tagDisplayName) catalogHeading = `Figuras 3D con la etiqueta #${tagDisplayName}`;
+    else if (cleanQuery) catalogHeading = `Resultados para “${cleanQuery}”`;
+    else if (tagNames.length) catalogHeading = `Colecciones con ${tagNames.map(name => `#${name}`).join(', ')}`;
 
-    // Mantiene la URL en sync con los filtros/pagina/limite actuales para que
-    // siempre se pueda copiar y reproduzca la misma vista al abrirla de nuevo.
-    useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        ['s', 'tags', 'reacciones', 'orden', 'desde', 'hasta', 'page', 'limit'].forEach(key => params.delete(key));
-        if (q) params.set('s', q);
-        if (selectedTags.length) params.set('tags', selectedTags.join(','));
-        if (selectedReacciones.length) params.set('reacciones', selectedReacciones.join(','));
-        if (orden && orden !== 'fecha_desc') params.set('orden', orden);
-        if (desde) params.set('desde', desde);
-        if (hasta) params.set('hasta', hasta);
-        if (page && page !== 1) params.set('page', String(page));
-        if (limit && limit !== 24) params.set('limit', String(limit));
-        setSearchParams(params, { replace: true });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [q, selectedTags, selectedReacciones, orden, desde, hasta, page, limit]);
+    let catalogSummary = 'Explora figuras 3D, figuras coleccionables y figuras kpop en las colecciones públicas de Figuis. La mayoría incluye opción Funko, chibi, figura coleccionable e Hipper (estilo Sonny Angel). Este catálogo es informativo y no indica existencias ni disponibilidad de venta.';
+    if (tagNotFound) catalogSummary = 'La etiqueta solicitada no existe o ya no está disponible en el catálogo público de Figuis.';
+    else if (tagDisplayName) catalogSummary = `${totalLabel} de Figuis ${total === 1 ? 'está clasificada' : 'están clasificadas'} con #${tagDisplayName}. Explora sus imágenes, referencias y modelos 3D publicados.`;
+    else if (cleanQuery) catalogSummary = `${totalLabel} coinciden con “${cleanQuery}” en el catálogo público de Figuis.`;
+    else if (activeFiltersCount) catalogSummary = `${totalLabel} coinciden con los filtros seleccionados en el catálogo público de Figuis.`;
+
+    const pageSuffix = page > 1 ? ` · Página ${page}` : '';
+    let catalogMetaTitle = DEFAULT_TITLE;
+    if (tagDisplayName) catalogMetaTitle = `${tagDisplayName}: figuras y colecciones 3D${pageSuffix} | ${SITE_ALIAS}`;
+    else if (cleanQuery) catalogMetaTitle = `Resultados para “${cleanQuery}”${pageSuffix} · ${SITE_ALIAS}`;
+    else if (activeFiltersCount) catalogMetaTitle = `Catálogo filtrado${pageSuffix} · ${SITE_ALIAS}`;
+
+    let catalogMetaDescription = cleanMetaText(catalogSummary);
+    if (tagDisplayName && tagActual) {
+        const collections = Number(tagActual.collection_count || 0);
+        const models = Number(tagActual.model_count || 0);
+        catalogMetaDescription = cleanMetaText(
+            `${tagDisplayName} reúne ${collections} ${collections === 1 ? 'colección pública' : 'colecciones públicas'} en ${SITE_ALIAS}, con ${models} ${models === 1 ? 'modelo 3D' : 'modelos 3D'} publicados para consulta.`
+        );
+    }
+
+    const publicOrigin = useMemo(resolvePublicOrigin, []);
+    const tagCanonicalUrl = tagActual?.canonical_url || tagActual?.url;
+    const catalogCanonicalUrl = tagCanonicalUrl
+        ? absolutePublicUrl(tagCanonicalUrl, publicOrigin)
+        : `${publicOrigin}${tagIdentifier ? getTagPath(getCanonicalTagIdentifier(tagActual, tagIdentifier)) : '/'}`;
 
     return {
-        style, identifier, figuras, pagination, loading, etiquetas, reaccionesDisponibles,
-        figuraActual, loadingDetail,
-        q, setQ: setQAndResetPage, selectedTags, toggleTag,
+        style, identifier, tagIdentifier, figuras, pagination, loading, etiquetas, reaccionesDisponibles,
+        figuraActual, loadingDetail, tagActual, tagNotFound, loadingTag,
+        q, setQ, selectedTags: effectiveSelectedTags, toggleTag,
         selectedReacciones, toggleReaccionFiltro, page, setPage,
         orden, setOrden, desde, setDesde, hasta, setHasta, limit,
         filtersOpen, openFilters, closeFilters, applyFilters, activeFiltersCount, clearFilters,
-        openDetail, closeDetail, replaceDetailIdentifier, getPageHref,
+        openDetail, closeDetail, replaceDetailIdentifier, replaceTagIdentifier, getPageHref, getTagHref,
+        effectiveSelectedTags, selectedTagDetails, hasArbitraryFilters,
+        catalogHeading, catalogSummary, catalogMetaTitle,
+        catalogMetaDescription,
+        catalogCanonicalUrl, publicOrigin,
     };
 };
 
 export const localEffects = (ls) => {
     const { f } = useStates();
     const requestedIdentifierRef = useRef(null);
+    const requestedTagIdentifierRef = useRef(null);
 
     useEffect(() => {
         f.auth.validateLogin();
@@ -219,10 +370,38 @@ export const localEffects = (ls) => {
     }, []);
 
     useEffect(() => {
-        const t = setTimeout(() => {
+        if (!ls.tagIdentifier) {
+            // Un detalle abierto desde una landing conserva la grilla y la
+            // etiqueta de origen; al cerrarlo volverá por historial sin otra
+            // petición ni un parpadeo del catálogo general.
+            if (ls.identifier && requestedTagIdentifierRef.current !== null) return;
+            if (requestedTagIdentifierRef.current !== null) f.catalogo.resetFiguras();
+            requestedTagIdentifierRef.current = null;
+            f.u1('catalogo', 'tagActual', null);
+            return;
+        }
+        const loadedIdentifier = getCanonicalTagIdentifier(ls.tagActual);
+        const isCanonicalRewrite = requestedTagIdentifierRef.current !== null
+            && loadedIdentifier === ls.tagIdentifier;
+        requestedTagIdentifierRef.current = ls.tagIdentifier;
+        if (!isCanonicalRewrite) {
+            f.catalogo.resetFiguras();
+            f.catalogo.getTag(ls.tagIdentifier);
+        }
+    }, [ls.tagIdentifier, ls.identifier]);
+
+    useEffect(() => {
+        if (!ls.tagIdentifier || !ls.tagActual) return;
+        const canonicalIdentifier = getCanonicalTagIdentifier(ls.tagActual, ls.tagIdentifier);
+        ls.replaceTagIdentifier(canonicalIdentifier);
+    }, [ls.tagIdentifier, ls.tagActual, ls.replaceTagIdentifier]);
+
+    useEffect(() => {
+        if (ls.tagIdentifier && !ls.tagActual) return undefined;
+        const timeout = setTimeout(() => {
             f.catalogo.getFiguras({
                 q: ls.q || undefined,
-                etiquetas: ls.selectedTags.length ? ls.selectedTags.join(',') : undefined,
+                etiquetas: ls.effectiveSelectedTags.length ? ls.effectiveSelectedTags.join(',') : undefined,
                 reacciones: ls.selectedReacciones.length ? ls.selectedReacciones.join(',') : undefined,
                 orden: ls.orden || undefined,
                 desde: ls.desde || undefined,
@@ -231,8 +410,8 @@ export const localEffects = (ls) => {
                 limit: ls.limit,
             });
         }, 300);
-        return () => clearTimeout(t);
-    }, [ls.q, ls.selectedTags, ls.selectedReacciones, ls.orden, ls.desde, ls.hasta, ls.page, ls.limit]);
+        return () => clearTimeout(timeout);
+    }, [ls.tagIdentifier, ls.tagActual, ls.q, ls.effectiveSelectedTags, ls.selectedReacciones, ls.orden, ls.desde, ls.hasta, ls.page, ls.limit]);
 
     useEffect(() => {
         if (!ls.identifier) {
@@ -246,8 +425,6 @@ export const localEffects = (ls) => {
         if (!isCanonicalRewrite) f.catalogo.getFigura(ls.identifier);
     }, [ls.identifier]);
 
-    // Los UUID y aliases existentes siguen resolviendo, pero la direccion que
-    // queda en el navegador siempre es la que el API declara como canonica.
     useEffect(() => {
         if (!ls.identifier || !ls.figuraActual) return;
         if (!isFiguraIdentifierFor(ls.identifier, ls.figuraActual)) return;
@@ -255,16 +432,11 @@ export const localEffects = (ls) => {
         ls.replaceDetailIdentifier(canonicalIdentifier);
     }, [ls.identifier, ls.figuraActual, ls.replaceDetailIdentifier]);
 
-    // Si se entra directo a /figura/:identifier (link compartido, nueva pestana,
-    // recargar la pagina) el paginador de fondo arranca en la pagina 1 sin
-    // saber en cual vive realmente esa figura. Solo se resuelve una vez, al
-    // montar: si el detalle se abrio con un click desde la grilla, ese click
-    // ya ocurrio en la pagina correcta y no hace falta tocarla.
     useEffect(() => {
         if (!ls.identifier) return;
         f.catalogo.getFiguraPagina(ls.identifier, {
             q: ls.q || undefined,
-            etiquetas: ls.selectedTags.length ? ls.selectedTags.join(',') : undefined,
+            etiquetas: ls.effectiveSelectedTags.length ? ls.effectiveSelectedTags.join(',') : undefined,
             reacciones: ls.selectedReacciones.length ? ls.selectedReacciones.join(',') : undefined,
             orden: ls.orden || undefined,
             desde: ls.desde || undefined,
@@ -273,41 +445,55 @@ export const localEffects = (ls) => {
         }, (result) => {
             if (result?.page) ls.setPage(result.page);
         });
+        // La página de fondo solo se resuelve al abrir un detalle directo.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Mantiene metadatos basicos y la URL canonica sincronizados para enlaces
-    // compartidos, resultados de busqueda y vistas previas sociales.
     useEffect(() => {
-        const catalogUrl = `${window.location.origin}/`;
+        const catalogUrl = `${ls.publicOrigin}/`;
+        const restoreCatalogMetadata = () => {
+            updateDocumentMetadata({
+                title: DEFAULT_TITLE,
+                description: DEFAULT_DESCRIPTION,
+                url: catalogUrl,
+            });
+        };
+
         if (!ls.identifier) {
-            updateDocumentMetadata({ title: DEFAULT_TITLE, description: DEFAULT_DESCRIPTION, url: catalogUrl });
-            return;
+            updateDocumentMetadata({
+                title: ls.catalogMetaTitle,
+                description: ls.catalogMetaDescription || DEFAULT_DESCRIPTION,
+                url: ls.catalogCanonicalUrl,
+                robots: ls.tagNotFound || ls.hasArbitraryFilters
+                    ? 'noindex,follow'
+                    : 'index,follow,max-image-preview:large',
+            });
+            return restoreCatalogMetadata;
         }
 
         if (ls.figuraActual === false) {
             updateDocumentMetadata({
                 title: 'Figura no encontrada · Figuis',
                 description: 'La figura solicitada no existe o ya no está disponible.',
-                url: `${window.location.origin}${getFiguraPath(ls.identifier)}`,
+                url: `${ls.publicOrigin}${getFiguraPath(ls.identifier)}`,
+                robots: 'noindex,follow',
             });
-            return;
+            return restoreCatalogMetadata;
         }
 
         if (ls.figuraActual?.nombre && isFiguraIdentifierFor(ls.identifier, ls.figuraActual)) {
             const canonicalIdentifier = getCanonicalFiguraIdentifier(ls.figuraActual, ls.identifier);
-            const description = String(
-                ls.figuraActual.descripcion || `Consulta fotos, archivos y detalles de ${ls.figuraActual.nombre} en Figuis.`
-            ).replace(/\s+/g, ' ').trim().slice(0, 160);
             updateDocumentMetadata({
-                title: `${ls.figuraActual.nombre} · Figuis`,
-                description,
-                url: `${window.location.origin}${getFiguraPath(canonicalIdentifier)}`,
+                title: collectionDocumentTitle(ls.figuraActual),
+                description: collectionMetaDescription(ls.figuraActual),
+                url: `${ls.publicOrigin}${getFiguraPath(canonicalIdentifier)}`,
             });
         }
 
-        return () => {
-            updateDocumentMetadata({ title: DEFAULT_TITLE, description: DEFAULT_DESCRIPTION, url: catalogUrl });
-        };
-    }, [ls.identifier, ls.figuraActual]);
+        return restoreCatalogMetadata;
+    }, [
+        ls.identifier, ls.figuraActual, ls.publicOrigin, ls.catalogMetaTitle,
+        ls.catalogMetaDescription, ls.catalogCanonicalUrl, ls.tagNotFound,
+        ls.hasArbitraryFilters,
+    ]);
 };

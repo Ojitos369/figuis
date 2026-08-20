@@ -14,6 +14,9 @@
     border: 1px solid color-mix(in srgb, var(--tag-color) 30%, transparent);
     white-space: nowrap;
     user-select: none;
+    text-decoration: none;
+    font-family: inherit;
+    appearance: none;
 
     .dot {
         width: 7px;

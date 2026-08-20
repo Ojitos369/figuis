@@ -12,6 +12,11 @@ import main
 COLLECTION_ID = "123e4567-e89b-42d3-a456-426614174000"
 CANONICAL_ID = f"gato-articulado-animal--{COLLECTION_ID}"
 CANONICAL_URL = f"https://figuis.example/figura/{CANONICAL_ID}"
+ANIMAL_TAG_ID = "423e4567-e89b-42d3-a456-426614174000"
+ANIMAL_TAG_CANONICAL_ID = f"animal--{ANIMAL_TAG_ID}"
+ANIMAL_TAG_CANONICAL_URL = (
+    f"https://figuis.example/etiqueta/{ANIMAL_TAG_CANONICAL_ID}"
+)
 COLLECTION = {
     "resource_id": f"collection:{CANONICAL_ID}",
     "resource_type": "collection",
@@ -24,8 +29,24 @@ COLLECTION = {
     "canonical_url": CANONICAL_URL,
     "url": CANONICAL_URL,
     "slug": "gato-articulado-animal",
-    "tags": [{"name": "Animal", "nombre": "Animal"}],
-    "etiquetas": [{"name": "Animal", "nombre": "Animal"}],
+    "tags": [
+        {
+            "id": ANIMAL_TAG_ID,
+            "name": "Animal",
+            "nombre": "Animal",
+            "canonical_id": ANIMAL_TAG_CANONICAL_ID,
+            "canonical_url": ANIMAL_TAG_CANONICAL_URL,
+        }
+    ],
+    "etiquetas": [
+        {
+            "id": ANIMAL_TAG_ID,
+            "name": "Animal",
+            "nombre": "Animal",
+            "canonical_id": ANIMAL_TAG_CANONICAL_ID,
+            "canonical_url": ANIMAL_TAG_CANONICAL_URL,
+        }
+    ],
     "cover_path": "/media/gato.webp",
     "cover_url": "https://figuis.example/media/gato.webp",
     "media_count": 2,
@@ -60,6 +81,25 @@ COLLECTION = {
     ],
 }
 PAGE = {"items": [COLLECTION], "page": 1, "page_size": 50, "total": 1, "pages": 1}
+TAG_ID = "523e4567-e89b-42d3-a456-426614174000"
+TAG_CANONICAL_ID = f"twice--{TAG_ID}"
+TAG_CANONICAL_URL = f"https://figuis.example/etiqueta/{TAG_CANONICAL_ID}"
+TAG = {
+    "id": TAG_ID,
+    "name": "twice",
+    "nombre": "twice",
+    "title": "twice",
+    "slug": "twice",
+    "canonical_id": TAG_CANONICAL_ID,
+    "identifier": TAG_CANONICAL_ID,
+    "canonical_url": TAG_CANONICAL_URL,
+    "url": TAG_CANONICAL_URL,
+    "collection_count": 39,
+    "model_count": 3,
+    "has_3d_model": True,
+    "updated_at": "2026-08-20T10:00:00+00:00",
+}
+TAGS_PAGE = {"items": [TAG], "page": 1, "page_size": 100, "total": 1, "pages": 1}
 
 
 class PublicWebRouteTests(unittest.TestCase):
@@ -78,21 +118,30 @@ class PublicWebRouteTests(unittest.TestCase):
         self.catalog_patches = (
             patch("urls.list_collections", return_value=PAGE),
             patch("urls.get_collection", return_value=COLLECTION),
+            patch("urls.list_public_tags", return_value=TAGS_PAGE),
+            patch("urls.get_public_tag", return_value=TAG),
             patch("urls._detail_image_url", return_value=COLLECTION["cover_url"]),
         )
+        self.catalog_mocks = []
         for catalog_patch in self.catalog_patches:
-            catalog_patch.start()
+            self.catalog_mocks.append(catalog_patch.start())
             self.addCleanup(catalog_patch.stop)
+        self.list_collections_mock = self.catalog_mocks[0]
 
     def test_initial_html_is_semantic_and_uses_canonical_slug(self):
         home = self.client.get("/")
         detail = self.client.get(f"/figura/{CANONICAL_ID}")
 
         self.assertEqual(home.status_code, 200)
-        self.assertIn("<h1>Catálogo público de Figuis</h1>", home.text)
+        self.assertIn("<title>Figuis 3D · Figuras 3D, K-pop y coleccionables</title>", home.text)
+        self.assertIn("<h1>Figuis 3D: figuras 3D, K-pop y coleccionables</h1>", home.text)
+        self.assertIn("Figuis es el catálogo de Ojitos369", home.text)
+        self.assertIn(f'href="{ANIMAL_TAG_CANONICAL_URL}">#Animal</a>', home.text)
         self.assertIn(CANONICAL_URL, home.text)
         self.assertEqual(detail.status_code, 200)
+        self.assertIn("<title>Gato articulado · Animal | Figuis 3D</title>", detail.text)
         self.assertIn("<h1>Gato articulado</h1>", detail.text)
+        self.assertIn(f'href="{ANIMAL_TAG_CANONICAL_URL}">#Animal</a>', detail.text)
         self.assertIn('type="application/ld+json"', detail.text)
         self.assertNotIn('"@type":"Product"', detail.text)
         self.assertNotIn('"@type":"Offer"', detail.text)
@@ -122,6 +171,7 @@ class PublicWebRouteTests(unittest.TestCase):
 
         self.assertEqual(redirect.status_code, 308)
         self.assertEqual(redirect.headers["location"], f"{CANONICAL_URL}?ref=test")
+        self.assertEqual(redirect.headers["vary"], "Accept")
         self.assertEqual(markdown.status_code, 200)
         self.assertTrue(markdown.headers["content-type"].startswith("text/markdown"))
         self.assertIn("# Gato articulado", markdown.text)
@@ -132,16 +182,81 @@ class PublicWebRouteTests(unittest.TestCase):
             prefers_explicit_json.headers["content-type"].startswith("application/json")
         )
 
+    def test_tag_page_is_indexable_and_negotiates_without_hash_in_urls(self):
+        canonical = self.client.get(f"/etiqueta/{TAG_CANONICAL_ID}")
+        redirect = self.client.get(
+            "/etiqueta/twice?ref=test",
+            follow_redirects=False,
+        )
+        markdown = self.client.get(
+            f"/etiqueta/{TAG_ID}",
+            headers={"Accept": "text/markdown"},
+            follow_redirects=False,
+        )
+        json_page = self.client.get(
+            f"/etiqueta/{TAG_ID}",
+            headers={"Accept": "application/json"},
+            follow_redirects=False,
+        )
+
+        self.assertEqual(canonical.status_code, 200)
+        self.assertIn(
+            "<title>Twice: figuras y colecciones 3D | Figuis 3D</title>",
+            canonical.text,
+        )
+        self.assertIn("<h1>#Twice: figuras y colecciones 3D</h1>", canonical.text)
+        self.assertIn('<script type="module"', canonical.text)
+        self.assertIn('"@type":"DefinedTerm"', canonical.text)
+        self.assertNotIn('"@type":"Product"', canonical.text)
+        self.assertIn(f'<link rel="canonical" href="{TAG_CANONICAL_URL}"', canonical.text)
+        self.assertNotIn("/etiqueta/#", canonical.text)
+        self.assertEqual(canonical.headers["content-location"], TAG_CANONICAL_URL)
+
+        self.assertEqual(redirect.status_code, 308)
+        self.assertEqual(redirect.headers["location"], f"{TAG_CANONICAL_URL}?ref=test")
+        self.assertEqual(redirect.headers["vary"], "Accept")
+        self.assertEqual(markdown.status_code, 200)
+        self.assertTrue(markdown.headers["content-type"].startswith("text/markdown"))
+        self.assertIn("# #Twice: figuras y colecciones 3D", markdown.text)
+        self.assertIn("Término de búsqueda: twice (sin #)", markdown.text)
+        self.assertNotIn("/etiqueta/#", markdown.text)
+        self.assertEqual(json_page.status_code, 200)
+        self.assertEqual(json_page.json()["data"]["canonical_id"], TAG_CANONICAL_ID)
+        self.assertEqual(json_page.headers["content-location"], TAG_CANONICAL_URL)
+        self.list_collections_mock.assert_any_call(
+            tag_ids=[TAG_ID],
+            page=1,
+            page_size=50,
+            base_url="https://figuis.example",
+        )
+
+    def test_missing_or_empty_public_tag_is_a_real_noindex_404(self):
+        with patch("urls.get_public_tag", return_value=None):
+            missing = self.client.get("/etiqueta/inexistente")
+        with patch(
+            "urls.list_collections",
+            return_value={"items": [], "page": 1, "page_size": 50, "total": 0, "pages": 0},
+        ):
+            empty = self.client.get(f"/etiqueta/{TAG_CANONICAL_ID}")
+
+        for response in (missing, empty):
+            self.assertEqual(response.status_code, 404)
+            self.assertIn('name="robots" content="noindex,follow"', response.text)
+            self.assertIn("Etiqueta no encontrada", response.text)
+
     def test_robots_and_sitemap_separate_search_from_training(self):
         robots = self.client.get("/robots.txt")
-        with patch(
-            "urls._all_collections",
-            return_value=([COLLECTION, dict(COLLECTION)], 2),
-        ) as loader:
+        with patch("urls._all_public_tags", return_value=([TAG], 1)) as tag_loader, patch(
+            "urls._all_collections", return_value=([COLLECTION, dict(COLLECTION)], 2)
+        ) as collection_loader:
             sitemap = self.client.get("/sitemap.xml")
-        loader.assert_called_once_with(
+        tag_loader.assert_called_once_with(
             "https://figuis.example",
             maximum=49_998,
+        )
+        collection_loader.assert_called_once_with(
+            "https://figuis.example",
+            maximum=49_997,
         )
 
         for crawler in (
@@ -173,6 +288,7 @@ class PublicWebRouteTests(unittest.TestCase):
             [
                 "https://figuis.example/",
                 "https://figuis.example/mcp-info",
+                TAG_CANONICAL_URL,
                 CANONICAL_URL,
             ],
         )
@@ -261,7 +377,7 @@ class PublicWebRouteTests(unittest.TestCase):
         )
         self.assertIn("https://figuis.example/mcp-info", llms.text)
 
-    def test_mcp_url_without_trailing_slash_redirects_without_https_downgrade(self):
+    def test_mcp_url_without_trailing_slash_uses_transport_without_redirect(self):
         initialize = {
             "jsonrpc": "2.0",
             "id": 1,
@@ -285,9 +401,12 @@ class PublicWebRouteTests(unittest.TestCase):
         )
         canonical = self.client.post("/mcp/", json=initialize, headers=headers)
 
-        self.assertEqual(compatibility.status_code, 307)
-        self.assertEqual(compatibility.headers["location"], "/mcp/")
-        self.assertEqual(compatibility.headers["cache-control"], "no-store")
+        self.assertEqual(compatibility.status_code, 200)
+        self.assertNotIn("location", compatibility.headers)
+        self.assertEqual(
+            compatibility.json()["result"]["protocolVersion"],
+            "2025-06-18",
+        )
         self.assertEqual(canonical.status_code, 200)
         self.assertEqual(canonical.json()["result"]["protocolVersion"], "2025-06-18")
 
@@ -303,12 +422,34 @@ class PublicWebRouteTests(unittest.TestCase):
         self.assertEqual(web_missing.status_code, 404)
         self.assertTrue(web_missing.headers["content-type"].startswith("text/html"))
 
+    def test_public_tag_api_lists_and_resolves_only_repository_results(self):
+        with patch("apis.public.urls.list_public_tags", return_value=TAGS_PAGE) as list_tags, patch(
+            "apis.public.urls.get_public_tag", return_value=TAG
+        ) as get_tag:
+            listing = self.client.get("/api/public/v1/tags?page=1&page_size=25")
+            detail = self.client.get(f"/api/public/v1/tags/{TAG_ID}")
+
+        self.assertEqual(listing.status_code, 200)
+        self.assertEqual(listing.json()["items"][0]["name"], "twice")
+        list_tags.assert_called_once_with(
+            page=1,
+            page_size=25,
+            base_url="https://figuis.example",
+        )
+        self.assertEqual(detail.status_code, 200)
+        self.assertEqual(detail.json()["data"]["canonical_id"], TAG_CANONICAL_ID)
+        self.assertEqual(detail.headers["content-location"], TAG_CANONICAL_URL)
+        self.assertEqual(detail.headers["link"], f'<{TAG_CANONICAL_URL}>; rel="canonical"')
+        get_tag.assert_called_once_with(TAG_ID, base_url="https://figuis.example")
+
     def test_public_openapi_does_not_advertise_internal_routes(self):
         response = self.client.get("/api/public/openapi.json")
 
         self.assertEqual(response.status_code, 200)
         paths = response.json()["paths"]
         self.assertIn("/api/public/v1/collections", paths)
+        self.assertIn("/api/public/v1/tags", paths)
+        self.assertIn("/api/public/v1/tags/{identifier}", paths)
         self.assertTrue(all(path.startswith("/api/public/v1/") for path in paths))
         self.assertFalse(any("admin" in path or "auth" in path for path in paths))
 

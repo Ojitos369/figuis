@@ -14,8 +14,9 @@
 
 .titleRow {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
+    gap: var(--sp-3);
 }
 
 .rangeBadge {
@@ -31,10 +32,96 @@
 }
 
 .title {
+    min-width: 0;
+    margin: 0;
     font-size: var(--fs-xl);
     font-weight: var(--fw-bold);
     letter-spacing: -0.01em;
     color: var(--text);
+}
+
+.metaRow {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+}
+
+.iconTip {
+    position: relative;
+    display: inline-flex;
+}
+
+.iconBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color .15s ease, border-color .15s ease;
+
+    &:hover, &:focus-visible { color: var(--text); border-color: var(--accent-hover); }
+}
+
+.iconImg {
+    width: 15px;
+    height: 15px;
+    object-fit: contain;
+}
+
+.tooltipBubble {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + var(--sp-2));
+    left: 0;
+    width: max-content;
+    max-width: 280px;
+    padding: var(--sp-2) var(--sp-3);
+    border-radius: var(--r-sm);
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    color: var(--text-soft);
+    font-size: var(--fs-xs);
+    line-height: 1.5;
+    box-shadow: var(--shadow-md);
+    opacity: 0;
+    transform: translateY(-4px);
+    pointer-events: none;
+    transition: opacity .15s ease, transform .15s ease;
+}
+
+.iconTip:hover .tooltipBubble,
+.iconTip:focus-within .tooltipBubble {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.activeTags {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+}
+
+.activeTagsLabel {
+    color: var(--text-muted);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+}
+
+.showAllLink {
+    align-self: flex-start;
+    color: var(--accent-hover);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    text-decoration: none;
+
+    &:hover { text-decoration: underline; }
 }
 
 .searchWrap {
@@ -126,6 +213,12 @@
         color: var(--accent-hover);
         font-weight: var(--fw-semibold);
     }
+}
+
+.figThumbLink {
+    display: block;
+    color: inherit;
+    text-decoration: none;
 }
 
 .filterTagsWrap {
@@ -271,7 +364,7 @@
     border-radius: var(--r-lg);
     background: var(--surface-1);
     overflow: hidden;
-    cursor: pointer;
+    cursor: default;
     text-align: left;
     font: inherit;
     color: inherit;
@@ -345,6 +438,7 @@
 }
 
 .figName {
+    margin: 0;
     font-size: var(--fs-sm);
     font-weight: var(--fw-semibold);
     color: var(--text);
@@ -352,6 +446,18 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.figNameLink {
+    color: inherit;
+    text-decoration: none;
+
+    &:hover { color: var(--accent-hover); }
+    &:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+        border-radius: var(--r-xs);
+    }
 }
 
 .figTags {

@@ -62,6 +62,7 @@ function AppUI() {
                     {/* -----------   CATALOGO PUBLICO   ----------- */}
                     <Route path="" element={<MainPage />}>
                         <Route path="" element={<GaleriaPage />} />
+                        <Route path="etiqueta/:tagIdentifier" element={<GaleriaPage />} />
                         <Route path="figura/:identifier" element={<GaleriaPage />} />
                         <Route path="mcp-info" element={<McpInfoPage />} />
                         <Route path="*" element={<P404 />} />

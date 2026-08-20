@@ -13,18 +13,30 @@ export const CatalogFilterButton = ({ style }) => {
     const [searchParams] = useSearchParams();
     const isCatalogo = useMemo(() => s.page?.title === 'Catálogo', [s.page?.title]);
     const filtersOpen = searchParams.get('filtros') === '1';
-    const selectedTags = useMemo(() => s.galeria?.selectedTags || [], [s.galeria?.selectedTags]);
-    const orden = useMemo(() => s.galeria?.orden || 'fecha_desc', [s.galeria?.orden]);
-    const q = useMemo(() => s.galeria?.q || '', [s.galeria?.q]);
-    const desde = useMemo(() => s.galeria?.desde || '', [s.galeria?.desde]);
-    const hasta = useMemo(() => s.galeria?.hasta || '', [s.galeria?.hasta]);
-    const activeCount = selectedTags.length + (orden !== 'fecha_desc' ? 1 : 0) + (q ? 1 : 0) + (desde ? 1 : 0) + (hasta ? 1 : 0);
+    const selectedTags = (searchParams.get('tags') || '').split(',').filter(Boolean);
+    const selectedReacciones = (searchParams.get('reacciones') || '').split(',').filter(Boolean);
+    const orden = searchParams.get('orden') || 'fecha_desc';
+    const q = searchParams.get('s') || '';
+    const desde = searchParams.get('desde') || '';
+    const hasta = searchParams.get('hasta') || '';
+    const routeTagCount = location.pathname.startsWith('/etiqueta/') ? 1 : 0;
+    const activeCount = selectedTags.length
+        + selectedReacciones.length
+        + routeTagCount
+        + (orden !== 'fecha_desc' ? 1 : 0)
+        + (q ? 1 : 0)
+        + (desde ? 1 : 0)
+        + (hasta ? 1 : 0);
 
     if (!isCatalogo) return null;
 
     const toggle = () => {
         if (filtersOpen) navigate(-1);
-        else navigate(`${location.pathname}?filtros=1`);
+        else {
+            const params = new URLSearchParams(location.search);
+            params.set('filtros', '1');
+            navigate(`${location.pathname}?${params.toString()}`);
+        }
     };
 
     return (

@@ -4,37 +4,56 @@ import { MediaThumb } from '../../../Components/MediaThumb';
 import { ReactionSummary } from '../../../Components/ReactionSummary';
 import { getCanonicalFiguraIdentifier, getFiguraPath } from '../figuraUrl';
 
-export const FigCard = ({ figura, style, onOpen, enterDelay = 0 }) => {
+export const FigCard = ({ figura, style, onOpen, getTagHref, enterDelay = 0 }) => {
     const location = useLocation();
     const identifier = getCanonicalFiguraIdentifier(figura);
+    const detailPath = `${getFiguraPath(identifier)}${location.search}`;
+
+    const handleOpen = (event) => {
+        if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button === 1) return;
+        event.preventDefault();
+        onOpen(identifier);
+    };
 
     return (
-        <Link
-            to={`${getFiguraPath(identifier)}${location.search}`}
+        <article
             className={`${style.figCard} ${style.figCardIn}`}
             style={{ animationDelay: `${enterDelay}ms` }}
-            onClick={(e) => {
-                if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button === 1) return;
-                e.preventDefault();
-                onOpen(identifier);
-            }}
         >
-            <div className={style.figThumb}>
-                {figura.portada
-                    ? <MediaThumb url={figura.portada} alt={figura.nombre} />
-                    : <span className={style.figThumbEmpty}>🧸</span>}
-                {!!figura.tiene_3d && (
-                    <span className={`${style.thumbBadge} ${style.thumbBadge3d}`}>🧊 3D</span>
-                )}
-                {!!figura.num_relacionados && (
-                    <span className={`${style.thumbBadge} ${style.thumbBadgeMedia}`}>🖼 {figura.num_relacionados}</span>
-                )}
-            </div>
+            <Link
+                to={detailPath}
+                className={style.figThumbLink}
+                onClick={handleOpen}
+                aria-label={`Ver ${figura.nombre}`}
+            >
+                <div className={style.figThumb}>
+                    {figura.portada
+                        ? <MediaThumb url={figura.portada} alt={figura.nombre} />
+                        : <span className={style.figThumbEmpty}>🧸</span>}
+                    {!!figura.tiene_3d && (
+                        <span className={`${style.thumbBadge} ${style.thumbBadge3d}`}>🧊 3D</span>
+                    )}
+                    {!!figura.num_relacionados && (
+                        <span className={`${style.thumbBadge} ${style.thumbBadgeMedia}`}>🖼 {figura.num_relacionados}</span>
+                    )}
+                </div>
+            </Link>
             <div className={style.figBody}>
-                <div className={style.figName}>{figura.nombre}</div>
+                <h2 className={style.figName}>
+                    <Link to={detailPath} className={style.figNameLink} onClick={handleOpen}>
+                        {figura.nombre}
+                    </Link>
+                </h2>
                 <div className={style.figTags}>
                     {figura.etiquetas?.slice(0, 2).map(e => (
-                        <Tag key={e.id} nombre={e.nombre} color={e.color} size="sm" />
+                        <Tag
+                            key={e.id}
+                            nombre={e.nombre}
+                            color={e.color}
+                            size="sm"
+                            to={getTagHref(e)}
+                            ariaLabel={`Ver colecciones con la etiqueta ${e.nombre}`}
+                        />
                     ))}
                     {figura.etiquetas?.length > 2 && (
                         <span className={style.figTagsMore}>+{figura.etiquetas.length - 2}</span>
@@ -44,6 +63,6 @@ export const FigCard = ({ figura, style, onOpen, enterDelay = 0 }) => {
                     <ReactionSummary reacciones={figura.reacciones_top} />
                 </div>
             </div>
-        </Link>
+        </article>
     );
 };

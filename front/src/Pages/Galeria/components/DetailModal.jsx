@@ -39,7 +39,7 @@ const fileNameFromPath = (path, fallback) => {
 
 export const DetailModal = ({ ls }) => {
     const { s, f } = useStates();
-    const { style, identifier, figuraActual, loadingDetail, closeDetail } = ls;
+    const { style, identifier, figuraActual, loadingDetail, closeDetail, getTagHref } = ls;
     const [activeIdx, setActiveIdx] = useState(0);
     const [show3D, setShow3D] = useState(false);
     const [shareMenuOpen, setShareMenuOpen] = useState(false);
@@ -281,7 +281,13 @@ export const DetailModal = ({ ls }) => {
                     {!!data.etiquetas?.length && (
                         <div className={style.detailTags}>
                             {data.etiquetas.map(e => (
-                                <Tag key={e.id} nombre={e.nombre} color={e.color} />
+                                <Tag
+                                    key={e.id}
+                                    nombre={e.nombre}
+                                    color={e.color}
+                                    to={getTagHref(e)}
+                                    ariaLabel={`Ver colecciones con la etiqueta ${e.nombre}`}
+                                />
                             ))}
                         </div>
                     )}

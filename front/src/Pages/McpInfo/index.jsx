@@ -2,12 +2,11 @@ import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Copy } from '../../Components/Icons';
 import { useStates } from '../../Hooks/useStates';
+import { DEFAULT_DESCRIPTION, DEFAULT_TITLE } from '../../constants/seo';
 import style from './styles/index.module.scss';
 
 const PAGE_TITLE = 'MCP público · Figuis';
 const PAGE_DESCRIPTION = 'Conecta clientes MCP al catálogo público de Figuis para consultar colecciones, imágenes y modelos 3D mediante herramientas de solo lectura.';
-const DEFAULT_TITLE = 'Figuis · Catálogo de colecciones y modelos 3D';
-const DEFAULT_DESCRIPTION = 'Catálogo público de colecciones, figuras, imágenes y modelos 3D para consulta e inspiración.';
 
 const TOOLS = [
     {
@@ -85,9 +84,10 @@ const setCanonicalUrl = (url) => {
     element.href = url;
 };
 
-const updateMetadata = ({ title, description, url }) => {
+const updateMetadata = ({ title, description, url, robots = 'index,follow,max-image-preview:large' }) => {
     document.title = title;
     setMetaContent('name', 'description', description);
+    setMetaContent('name', 'robots', robots);
     setMetaContent('property', 'og:title', title);
     setMetaContent('property', 'og:description', description);
     setMetaContent('property', 'og:url', url);

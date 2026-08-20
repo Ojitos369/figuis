@@ -14,9 +14,30 @@ from typing import Any, Iterable
 
 
 SITE_NAME = "Figuis"
+SITE_ALTERNATE_NAMES = ("Figuis 3D", "Figuis Ojitos369", "Figuis 369")
+PRIMARY_SITE_ALTERNATE_NAME = SITE_ALTERNATE_NAMES[0]
+SITE_INSTAGRAM_URL = "https://www.instagram.com/figuis.3d/"
+SITE_SAME_AS = (SITE_INSTAGRAM_URL,)
+HOME_TITLE = "Figuis 3D · Figuras 3D, K-pop y coleccionables"
+# Estilos de escultura que casi toda figura del catálogo ofrece como variante
+# (no son etiquetas por-figura, son una característica general del catálogo).
+SITE_CATEGORY_KEYWORDS = (
+    "Figuras 3D",
+    "Figuras coleccionables",
+    "Figuras kpop",
+    "Funkos",
+    "Chibi",
+    "Hipper",
+    "Sonny Angel",
+    "Sony Angel",
+    "Kpop Hipper",
+    "Kpop Sonny Angel",
+)
 SITE_DESCRIPTION = (
-    "Catálogo público de colecciones, figuras, imágenes y modelos 3D para "
-    "consulta e inspiración."
+    "Figuis es el catálogo de Ojitos369, también llamado Figuis 3D o Figuis "
+    "369. Explora figuras 3D, figuras coleccionables y figuras kpop: la "
+    "mayoría incluye opción Funko, chibi, figura coleccionable e Hipper "
+    "(estilo Sonny Angel), con imágenes y modelos 3D."
 )
 
 
@@ -69,14 +90,23 @@ def collection_json_ld(collection: dict[str, Any], base_url: str) -> dict[str, A
     """JSON-LD honesto para una colección; deliberadamente no emite Offer."""
 
     canonical = collection["canonical_url"]
-    tags = value(collection, "tags", "etiquetas", default=[]) or []
+    tags = _tag_records(collection)
     media = collection.get("media") or []
     media_items = [_media_schema(item, collection) for item in media]
-    description = plain_text(
-        value(collection, "description", "descripcion"),
-        f"Colección pública {value(collection, 'name', 'nombre')} en Figuis.",
-        300,
-    )
+    description = collection_meta_description(collection)
+    tag_entities = [
+        {
+            key: item
+            for key, item in {
+                "@type": "DefinedTerm",
+                "name": value(tag, "name", "nombre"),
+                "url": tag.get("canonical_url"),
+            }.items()
+            if item not in (None, "")
+        }
+        for tag in tags
+        if value(tag, "name", "nombre")
+    ]
     creative_work: dict[str, Any] = {
         "@type": "CreativeWork",
         "@id": f"{canonical}#collection",
@@ -88,6 +118,7 @@ def collection_json_ld(collection: dict[str, Any], base_url: str) -> dict[str, A
             if identifier not in (None, "")
         ],
         "keywords": [value(tag, "name", "nombre") for tag in tags if value(tag, "name", "nombre")],
+        "about": tag_entities,
         "dateCreated": collection.get("created_at"),
         "dateModified": collection.get("updated_at"),
         "associatedMedia": media_items,
@@ -102,7 +133,7 @@ def collection_json_ld(collection: dict[str, Any], base_url: str) -> dict[str, A
         "@type": "CollectionPage",
         "@id": canonical,
         "url": canonical,
-        "name": f"{value(collection, 'name', 'nombre')} · {SITE_NAME}",
+        "name": collection_title(collection),
         "description": description,
         "inLanguage": "es-MX",
         "dateModified": collection.get("updated_at"),
@@ -120,12 +151,15 @@ def collection_json_ld(collection: dict[str, Any], base_url: str) -> dict[str, A
                 "@type": "Organization",
                 "@id": f"{base_url}/#organization",
                 "name": SITE_NAME,
+                "alternateName": list(SITE_ALTERNATE_NAMES),
                 "url": f"{base_url}/",
+                "sameAs": list(SITE_SAME_AS),
             },
             {
                 "@type": "WebSite",
                 "@id": f"{base_url}/#website",
                 "name": SITE_NAME,
+                "alternateName": list(SITE_ALTERNATE_NAMES),
                 "url": f"{base_url}/",
                 "inLanguage": "es-MX",
                 "publisher": {"@id": f"{base_url}/#organization"},
@@ -158,6 +192,7 @@ def collection_json_ld(collection: dict[str, Any], base_url: str) -> dict[str, A
 def catalog_json_ld(
     collections: Iterable[dict[str, Any]], base_url: str, total: int
 ) -> dict[str, Any]:
+    collections = list(collections)
     entries = []
     for position, collection in enumerate(collections, start=1):
         entries.append(
@@ -168,6 +203,15 @@ def catalog_json_ld(
                 "name": value(collection, "name", "nombre"),
             }
         )
+    tag_terms = [
+        {
+            "@type": "DefinedTerm",
+            "name": tag["name"],
+            "url": tag.get("canonical_url"),
+        }
+        for tag in _visible_tags(collections)
+        if tag.get("canonical_url")
+    ]
     return {
         "@context": "https://schema.org",
         "@graph": [
@@ -175,23 +219,29 @@ def catalog_json_ld(
                 "@type": "Organization",
                 "@id": f"{base_url}/#organization",
                 "name": SITE_NAME,
+                "alternateName": list(SITE_ALTERNATE_NAMES),
                 "url": f"{base_url}/",
+                "sameAs": list(SITE_SAME_AS),
             },
             {
                 "@type": "WebSite",
                 "@id": f"{base_url}/#website",
                 "name": SITE_NAME,
+                "alternateName": list(SITE_ALTERNATE_NAMES),
                 "url": f"{base_url}/",
                 "inLanguage": "es-MX",
+                "about": tag_terms,
                 "publisher": {"@id": f"{base_url}/#organization"},
             },
             {
                 "@type": "CollectionPage",
                 "@id": f"{base_url}/",
                 "url": f"{base_url}/",
-                "name": "Figuis · Catálogo de colecciones y modelos 3D",
+                "name": HOME_TITLE,
                 "description": SITE_DESCRIPTION,
                 "inLanguage": "es-MX",
+                "keywords": list(SITE_CATEGORY_KEYWORDS)
+                + [term["name"] for term in tag_terms],
                 "mainEntity": {
                     "@type": "ItemList",
                     "numberOfItems": total,
@@ -512,12 +562,15 @@ def mcp_info_json_ld(info: dict[str, Any]) -> dict[str, Any]:
                 "@type": "Organization",
                 "@id": f"{base_url}/#organization",
                 "name": SITE_NAME,
+                "alternateName": list(SITE_ALTERNATE_NAMES),
                 "url": f"{base_url}/",
+                "sameAs": list(SITE_SAME_AS),
             },
             {
                 "@type": "WebSite",
                 "@id": f"{base_url}/#website",
                 "name": SITE_NAME,
+                "alternateName": list(SITE_ALTERNATE_NAMES),
                 "url": f"{base_url}/",
                 "inLanguage": "es-MX",
                 "publisher": {"@id": f"{base_url}/#organization"},
@@ -566,9 +619,97 @@ def mcp_info_document(info: dict[str, Any], spa_document: str) -> str:
     )
 
 
-def _tag_names(collection: dict[str, Any]) -> list[str]:
+def _tag_records(collection: dict[str, Any]) -> list[dict[str, Any]]:
     tags = value(collection, "tags", "etiquetas", default=[]) or []
-    return [plain_text(value(tag, "name", "nombre")) for tag in tags if value(tag, "name", "nombre")]
+    records: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for tag in tags:
+        if not isinstance(tag, dict):
+            tag = {"name": tag}
+        name = plain_text(value(tag, "name", "nombre"))
+        if not name or name.casefold() in seen:
+            continue
+        seen.add(name.casefold())
+        records.append({**tag, "name": name, "nombre": name})
+    return records
+
+
+def _tag_names(collection: dict[str, Any]) -> list[str]:
+    return [tag["name"] for tag in _tag_records(collection)]
+
+
+def _visible_tags(collections: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+    tags: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for collection in collections:
+        for tag in _tag_records(collection):
+            key = str(tag.get("id") or tag["name"]).casefold()
+            if key in seen:
+                continue
+            seen.add(key)
+            tags.append(tag)
+    return sorted(tags, key=lambda tag: tag["name"].casefold())
+
+
+def display_tag_name(tag: dict[str, Any] | str) -> str:
+    name = plain_text(value(tag, "name", "nombre") if isinstance(tag, dict) else tag)
+    return f"{name[:1].upper()}{name[1:]}" if name else "Etiqueta"
+
+
+def _branded_title(prefix: str, *, limit: int = 120) -> str:
+    suffix = f" | {PRIMARY_SITE_ALTERNATE_NAME}"
+    available = max(limit - len(suffix), 1)
+    clean_prefix = plain_text(prefix, limit=available).rstrip(" ·,|")
+    return f"{clean_prefix}{suffix}"
+
+
+def collection_title(collection: dict[str, Any]) -> str:
+    """Build a concise unique title from the name, useful tags and brand."""
+
+    name = plain_text(value(collection, "name", "nombre"), "Colección")
+    folded_name = name.casefold()
+    selected: list[str] = []
+    seen: set[str] = set()
+    for tag in _tag_names(collection):
+        folded_tag = tag.casefold()
+        if not folded_tag or folded_tag in folded_name or folded_tag in seen:
+            continue
+        seen.add(folded_tag)
+        selected.append(tag)
+        if len(selected) == 2:
+            break
+    qualifier = f" · {', '.join(selected)}" if selected else ""
+    return _branded_title(f"{name}{qualifier}")
+
+
+def collection_meta_description(collection: dict[str, Any]) -> str:
+    name = plain_text(value(collection, "name", "nombre"), "Esta colección")
+    tags = _tag_names(collection)
+    editorial = plain_text(value(collection, "description", "descripcion"))
+    if tags:
+        lead = f"{name} en {PRIMARY_SITE_ALTERNATE_NAME} está clasificada en {', '.join(tags[:4])}."
+    else:
+        lead = f"Explora {name} en el catálogo público de {PRIMARY_SITE_ALTERNATE_NAME}."
+    return plain_text(f"{lead} {editorial}" if editorial else lead, limit=220)
+
+
+def tag_page_title(tag: dict[str, Any]) -> str:
+    return _branded_title(
+        f"{display_tag_name(tag)}: figuras y colecciones 3D",
+        limit=100,
+    )
+
+
+def tag_summary(tag: dict[str, Any]) -> str:
+    name = display_tag_name(tag)
+    collections = int(tag.get("collection_count") or 0)
+    models = int(tag.get("model_count") or 0)
+    collection_word = "colección pública" if collections == 1 else "colecciones públicas"
+    model_word = "modelo 3D" if models == 1 else "modelos 3D"
+    return (
+        f"{name} reúne {collections} {collection_word} en {PRIMARY_SITE_ALTERNATE_NAME}, "
+        f"con {models} {model_word} publicados para consulta."
+    )
 
 
 def collection_summary(collection: dict[str, Any]) -> str:
@@ -580,7 +721,7 @@ def collection_summary(collection: dict[str, Any]) -> str:
     )
     models = int(counts.get("modelo_3d") or collection.get("model_count") or 0)
     tags = _tag_names(collection)
-    answer = f"{value(collection, 'name', 'nombre')} es una colección pública de Figuis con {total} archivo"
+    answer = f"{value(collection, 'name', 'nombre')} es una colección pública de {PRIMARY_SITE_ALTERNATE_NAME} con {total} archivo"
     answer += "s" if total != 1 else ""
     answer += f", incluidos {models} modelo"
     answer += "s" if models != 1 else ""
@@ -599,8 +740,17 @@ def collection_html(collection: dict[str, Any], base_url: str) -> str:
         plain_text(value(collection, "description", "descripcion"), collection_summary(collection))
     )
     summary = html.escape(collection_summary(collection))
-    tags = _tag_names(collection)
-    tag_html = "".join(f"<li>#{html.escape(tag)}</li>" for tag in tags)
+    tags = _tag_records(collection)
+    tag_items = []
+    for tag in tags:
+        label = f"#{html.escape(tag['name'])}"
+        tag_url = tag.get("canonical_url")
+        tag_items.append(
+            f'<li><a href="{html.escape(str(tag_url), quote=True)}">{label}</a></li>'
+            if tag_url
+            else f"<li>{label}</li>"
+        )
+    tag_html = "".join(tag_items)
     media_html = []
     models = []
     for item in collection.get("media") or []:
@@ -645,8 +795,17 @@ def collection_html(collection: dict[str, Any], base_url: str) -> str:
 
 def catalog_html(collections: Iterable[dict[str, Any]], base_url: str, total: int) -> str:
     collections = list(collections)
+    collection_label = "colección pública" if total == 1 else "colecciones públicas"
     items = []
     model_items = []
+    tag_items = []
+    for tag in _visible_tags(collections):
+        if not tag.get("canonical_url"):
+            continue
+        tag_items.append(
+            f'<li><a href="{html.escape(str(tag["canonical_url"]), quote=True)}">'
+            f'#{html.escape(display_tag_name(tag))}</a></li>'
+        )
     for collection in collections:
         url = html.escape(str(collection.get("canonical_url") or ""), quote=True)
         name = html.escape(plain_text(value(collection, "name", "nombre")))
@@ -674,9 +833,20 @@ def catalog_html(collections: Iterable[dict[str, Any]], base_url: str, total: in
             )
     return f"""
 <main data-agent-readable="true">
-  <h1>Catálogo público de Figuis</h1>
-  <p>Figuis reúne {total} colección{'es' if total != 1 else ''} pública{'s' if total != 1 else ''} con imágenes, referencias y modelos 3D.</p>
+  <h1>Figuis 3D: figuras 3D, K-pop y coleccionables</h1>
+  <p>Figuis es el catálogo de Ojitos369, también conocido como Figuis 3D o Figuis 369.</p>
+  <p>Figuis reúne {total} {collection_label} con imágenes, figuras, referencias K-pop y modelos 3D.</p>
   <p>Actualmente es un catálogo informativo y no ofrece compra en línea.</p>
+  <section>
+    <h2>¿Qué tipo de figuras hay en Figuis 3D?</h2>
+    <p>Figuis explora figuras 3D, figuras coleccionables y figuras kpop, clasificadas por etiqueta real en las colecciones públicas.</p>
+    <p>La mayoría de las figuras del catálogo incluye variantes de escultura: opción Funko, opción chibi, figura coleccionable y opción Hipper (estilo Sonny Angel).</p>
+  </section>
+  <section>
+    <h2>Explora Figuis 3D por etiqueta</h2>
+    <p>Estas etiquetas reales clasifican las colecciones públicas de la página actual.</p>
+    <ul>{''.join(tag_items) or '<li>Aún no hay etiquetas públicas en esta página.</li>'}</ul>
+  </section>
   <section>
     <h2>¿Qué colecciones y modelos hay?</h2>
     <ul>{''.join(items) or '<li>Aún no hay colecciones públicas.</li>'}</ul>
@@ -690,11 +860,202 @@ def catalog_html(collections: Iterable[dict[str, Any]], base_url: str, total: in
     <h2>¿Cómo consultar el catálogo desde un agente?</h2>
     <p>Usa la <a href="{html.escape(base_url, quote=True)}/api/public/v1/collections">API pública</a> o consulta la <a href="{html.escape(base_url, quote=True)}/mcp-info">información de conexión y herramientas del servidor MCP</a>.</p>
   </section>
+  <p>Síguenos en <a href="{html.escape(SITE_INSTAGRAM_URL, quote=True)}">Instagram (@figuis.3d)</a>.</p>
 </main>""".strip()
 
 
+def tag_json_ld(
+    tag: dict[str, Any],
+    collections: Iterable[dict[str, Any]],
+    base_url: str,
+    total: int,
+) -> dict[str, Any]:
+    collections = list(collections)
+    canonical = tag["canonical_url"]
+    entries = [
+        {
+            "@type": "ListItem",
+            "position": position,
+            "url": collection.get("canonical_url"),
+            "name": value(collection, "name", "nombre"),
+        }
+        for position, collection in enumerate(collections, start=1)
+    ]
+    displayed = len(entries)
+    return {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "Organization",
+                "@id": f"{base_url}/#organization",
+                "name": SITE_NAME,
+                "alternateName": list(SITE_ALTERNATE_NAMES),
+                "url": f"{base_url}/",
+                "sameAs": list(SITE_SAME_AS),
+            },
+            {
+                "@type": "WebSite",
+                "@id": f"{base_url}/#website",
+                "name": SITE_NAME,
+                "alternateName": list(SITE_ALTERNATE_NAMES),
+                "url": f"{base_url}/",
+                "inLanguage": "es-MX",
+                "publisher": {"@id": f"{base_url}/#organization"},
+            },
+            {
+                "@type": "DefinedTerm",
+                "@id": f"{canonical}#term",
+                "name": value(tag, "name", "nombre"),
+                "url": canonical,
+            },
+            {
+                "@type": "CollectionPage",
+                "@id": canonical,
+                "url": canonical,
+                "name": tag_page_title(tag),
+                "description": tag_summary(tag),
+                "inLanguage": "es-MX",
+                "dateModified": tag.get("updated_at"),
+                "isPartOf": {"@id": f"{base_url}/#website"},
+                "about": {"@id": f"{canonical}#term"},
+                "mainEntity": {
+                    "@type": "ItemList",
+                    "numberOfItems": displayed,
+                    "itemListElement": entries,
+                },
+                "breadcrumb": {"@id": f"{canonical}#breadcrumb"},
+            },
+            {
+                "@type": "BreadcrumbList",
+                "@id": f"{canonical}#breadcrumb",
+                "itemListElement": [
+                    {
+                        "@type": "ListItem",
+                        "position": 1,
+                        "name": "Catálogo",
+                        "item": f"{base_url}/",
+                    },
+                    {
+                        "@type": "ListItem",
+                        "position": 2,
+                        "name": display_tag_name(tag),
+                        "item": canonical,
+                    },
+                ],
+            },
+        ],
+    }
+
+
+def tag_html(
+    tag: dict[str, Any],
+    collections: Iterable[dict[str, Any]],
+    base_url: str,
+    total: int,
+) -> str:
+    collections = list(collections)
+    name = html.escape(display_tag_name(tag))
+    raw_name = html.escape(plain_text(value(tag, "name", "nombre")))
+    canonical = html.escape(str(tag["canonical_url"]), quote=True)
+    collection_items = []
+    for collection in collections:
+        url = html.escape(str(collection.get("canonical_url") or ""), quote=True)
+        collection_name = html.escape(plain_text(value(collection, "name", "nombre")))
+        description = html.escape(collection_meta_description(collection))
+        collection_items.append(
+            f'<li><article><h2><a href="{url}">{collection_name}</a></h2>'
+            f"<p>{description}</p></article></li>"
+        )
+    models = int(tag.get("model_count") or 0)
+    displayed = len(collections)
+    if displayed == total:
+        collection_answer = (
+            f"Se muestran {total} colección{'es' if total != 1 else ''} "
+            f"pública{'s' if total != 1 else ''} clasificada{'s' if total != 1 else ''} "
+            "con esta etiqueta real."
+        )
+    else:
+        collection_answer = (
+            f"Hay {total} colecciones públicas con esta etiqueta real; "
+            f"esta representación muestra las primeras {displayed}."
+        )
+    model_answer = (
+        f"Sí. Las colecciones clasificadas como {name} incluyen {models} "
+        f"modelo{'s' if models != 1 else ''} 3D publicado{'s' if models != 1 else ''}."
+        if models
+        else f"No hay modelos 3D publicados bajo la etiqueta {name} por ahora."
+    )
+    return f"""
+<main data-agent-readable="true">
+  <nav aria-label="Migas de pan"><a href="{html.escape(base_url, quote=True)}/">Catálogo</a> / Etiqueta / #{name}</nav>
+  <article>
+    <h1>#{name}: figuras y colecciones 3D</h1>
+    <p>{html.escape(tag_summary(tag))}</p>
+    <p>La etiqueta visible es <strong>#{raw_name}</strong>; se busca como <strong>{raw_name}</strong> y su URL no incluye #.</p>
+    <section>
+      <h2>¿Qué colecciones tienen la etiqueta {name}?</h2>
+      <p>{collection_answer}</p>
+      <ul>{''.join(collection_items) or '<li>No hay colecciones públicas para esta etiqueta.</li>'}</ul>
+    </section>
+    <section>
+      <h2>¿Hay modelos 3D con la etiqueta {name}?</h2>
+      <p>{model_answer}</p>
+    </section>
+    <p><a href="{canonical}">Enlace permanente de la etiqueta {name}</a></p>
+  </article>
+</main>""".strip()
+
+
+def tag_markdown(
+    tag: dict[str, Any],
+    collections: Iterable[dict[str, Any]],
+    total: int,
+) -> str:
+    name = display_tag_name(tag)
+    raw_name = plain_text(value(tag, "name", "nombre"))
+    collection_list = list(collections)
+    lines = [
+        f"# #{name}: figuras y colecciones 3D",
+        "",
+        tag_summary(tag),
+        "",
+        f"- Etiqueta visible: #{raw_name}",
+        f"- Término de búsqueda: {raw_name} (sin #)",
+        f"- URL canónica: {tag.get('canonical_url')}",
+        f"- Identificador: {tag.get('id')}",
+        f"- Colecciones públicas: {total}",
+        f"- Colecciones mostradas en esta representación: {len(collection_list)}",
+        f"- Modelos 3D publicados: {int(tag.get('model_count') or 0)}",
+        "",
+        f"## Colecciones con la etiqueta {name}",
+        "",
+    ]
+    if not collection_list:
+        lines.append("No hay colecciones públicas para esta etiqueta.")
+    for collection in collection_list:
+        lines.append(
+            f"- [{plain_text(value(collection, 'name', 'nombre'))}]({collection.get('canonical_url')}): "
+            f"{collection_meta_description(collection)}"
+        )
+    lines.extend(
+        [
+            "",
+            "## Disponibilidad comercial",
+            "",
+            "Esta página es informativa. No publica precio, inventario ni disponibilidad de compra.",
+        ]
+    )
+    return "\n".join(lines).strip() + "\n"
+
+
 def collection_markdown(collection: dict[str, Any]) -> str:
-    tags = " ".join(f"#{plain_text(value(tag, 'name', 'nombre')).replace(' ', '')}" for tag in value(collection, "tags", "etiquetas", default=[]) or [])
+    tag_values = []
+    for tag in _tag_records(collection):
+        label = plain_text(tag["name"])
+        tag_values.append(
+            f"[#{label}]({tag['canonical_url']})" if tag.get("canonical_url") else f"#{label}"
+        )
+    tags = ", ".join(tag_values)
     lines = [
         f"# {plain_text(value(collection, 'name', 'nombre'))}",
         "",
@@ -730,15 +1091,36 @@ def collection_markdown(collection: dict[str, Any]) -> str:
 
 def catalog_markdown(collections: Iterable[dict[str, Any]], total: int, base_url: str) -> str:
     collections = list(collections)
+    collection_label = "colección pública" if total == 1 else "colecciones públicas"
     lines = [
-        "# Catálogo público de Figuis",
+        "# Figuis 3D: figuras 3D, K-pop y coleccionables",
         "",
-        f"Figuis contiene {total} colección(es) pública(s) con imágenes y modelos 3D.",
+        "Figuis es el catálogo de Ojitos369, también conocido como Figuis 3D o Figuis 369.",
+        f"Figuis contiene {total} {collection_label} con figuras, referencias K-pop, imágenes y modelos 3D.",
         "El catálogo es informativo; no representa inventario ni disponibilidad de venta.",
         "",
-        "## Colecciones",
+        "## ¿Qué tipo de figuras hay en Figuis 3D?",
+        "",
+        "Figuis explora figuras 3D, figuras coleccionables y figuras kpop, clasificadas por etiqueta "
+        "real en las colecciones públicas.",
+        "La mayoría de las figuras del catálogo incluye variantes de escultura: opción Funko, opción "
+        "chibi, figura coleccionable y opción Hipper (estilo Sonny Angel).",
+        "",
+        "## Etiquetas públicas",
         "",
     ]
+    visible_tags = [tag for tag in _visible_tags(collections) if tag.get("canonical_url")]
+    if not visible_tags:
+        lines.append("Aún no hay etiquetas públicas en esta página.")
+    for tag in visible_tags:
+        lines.append(f"- [#{display_tag_name(tag)}]({tag['canonical_url']})")
+    lines.extend(
+        [
+            "",
+            "## Colecciones",
+            "",
+        ]
+    )
     for collection in collections:
         lines.append(
             f"- [{plain_text(value(collection, 'name', 'nombre'))}]({collection.get('canonical_url')}): "
@@ -774,6 +1156,10 @@ def catalog_markdown(collections: Iterable[dict[str, Any]], total: int, base_url
             f"- API JSON: {base_url}/api/public/v1/collections",
             f"- Información y herramientas MCP: {base_url}/mcp-info",
             f"- MCP de solo lectura: {base_url}/mcp/",
+            "",
+            "## Redes sociales",
+            "",
+            f"- Instagram: [@figuis.3d]({SITE_INSTAGRAM_URL})",
         ]
     )
     return "\n".join(lines).strip() + "\n"

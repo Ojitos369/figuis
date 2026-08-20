@@ -36,6 +36,8 @@ COLLECTION_ID = "123e4567-e89b-42d3-a456-426614174000"
 SECOND_COLLECTION_ID = "123e4567-e89b-42d3-a456-426614174001"
 MEDIA_ID = "223e4567-e89b-42d3-a456-426614174000"
 SECOND_MEDIA_ID = "223e4567-e89b-42d3-a456-426614174001"
+TAG_ID = "323e4567-e89b-42d3-a456-426614174000"
+SECOND_TAG_ID = "323e4567-e89b-42d3-a456-426614174001"
 
 
 class FakeConnection:
@@ -71,6 +73,11 @@ class SlugAndIdentifierTests(unittest.TestCase):
         identifier = catalog.canonical_identifier("Robot", ["#Sci Fi"], COLLECTION_ID.upper())
         self.assertEqual(identifier, f"robot-sci-fi--{COLLECTION_ID}")
         self.assertEqual(catalog.short_code(COLLECTION_ID), "123E45")
+
+    def test_tag_identifier_is_stable_and_contains_no_hash(self):
+        identifier = catalog.tag_identifier("#K-pop / TWICE", TAG_ID.upper())
+        self.assertEqual(identifier, f"k-pop-twice--{TAG_ID}")
+        self.assertNotIn("#", identifier)
 
 
 class UrlAndSerializationTests(unittest.TestCase):
@@ -166,6 +173,67 @@ class RepositoryTests(unittest.TestCase):
         repository = catalog.CatalogRepository(FakeConnection(handler))
         self.assertIsNone(repository.resolve_collection("robot-3d"))
 
+    def test_lists_and_resolves_only_tags_used_by_public_collections(self):
+        row = {
+            "id": TAG_ID,
+            "nombre": "twice",
+            "color": "#fff",
+            "collection_count": 39,
+            "model_count": 4,
+            "updated_at": datetime(2026, 8, 20),
+        }
+
+        def handler(sql, params):
+            if "tag_list.count" in sql:
+                return [{"total": 1}]
+            if "tag_list.items" in sql:
+                return [row]
+            if "tag_resolve.by_uuid" in sql:
+                return [row] if params["id"] == TAG_ID else []
+            if "tag_resolve.by_slug" in sql:
+                return [row]
+            return []
+
+        connection = FakeConnection(handler)
+        repository = catalog.CatalogRepository(
+            connection,
+            base_url="https://figuis.example",
+        )
+        page = repository.list_public_tags(page=-1, page_size=500)
+        item = page["items"][0]
+        canonical = f"twice--{TAG_ID}"
+
+        self.assertEqual((page["page"], page["page_size"]), (1, catalog.MAX_PAGE_SIZE))
+        self.assertEqual(item["canonical_id"], canonical)
+        self.assertEqual(item["canonical_url"], f"https://figuis.example/etiqueta/{canonical}")
+        self.assertEqual(item["collection_count"], 39)
+        self.assertTrue(item["has_3d_model"])
+
+        by_uuid = repository.get_public_tag(TAG_ID)
+        by_slug = repository.get_public_tag("twice")
+        stale = repository.get_public_tag(f"old-name--{TAG_ID}")
+        self.assertEqual(by_uuid["resolution"], "uuid")
+        self.assertEqual(by_slug["resolution"], "slug")
+        self.assertEqual(stale["resolution"], "stale")
+        self.assertEqual(stale["canonical_id"], canonical)
+
+        for sql, _params in connection.calls:
+            if "public_catalog.tag_" in sql:
+                self.assertIn("f.estatus = 'publico'", sql)
+                self.assertIn("btrim(ltrim(btrim(e.nombre), '#')) <> ''", sql)
+
+    def test_ambiguous_tag_slug_does_not_guess(self):
+        def handler(sql, _params):
+            if "tag_resolve.by_slug" in sql:
+                return [
+                    {"id": TAG_ID, "nombre": "K pop", "collection_count": 1},
+                    {"id": SECOND_TAG_ID, "nombre": "K-pop", "collection_count": 1},
+                ]
+            return []
+
+        repository = catalog.CatalogRepository(FakeConnection(handler))
+        self.assertIsNone(repository.get_public_tag("k-pop"))
+
     def test_cover_selects_only_images_but_counts_all_public_media(self):
         sql = " ".join(catalog.CatalogRepository._collection_select_sql().split())
 
@@ -229,6 +297,38 @@ class RepositoryTests(unittest.TestCase):
             self.assertNotIn(attack, sql)
         self.assertEqual(connection.calls[0][1]["search"], "%robot\\%' OR TRUE --%")
         self.assertEqual(connection.calls[-1][1]["limit"], catalog.MAX_PAGE_SIZE)
+
+    def test_search_normalizes_a_leading_visible_hashtag(self):
+        def handler(sql, _params):
+            if "collection_list.count" in sql:
+                return [{"total": 0}]
+            return []
+
+        connection = FakeConnection(handler)
+        catalog.list_collections("  #twice  ", connection=connection)
+
+        self.assertEqual(connection.calls[0][1]["search"], "%twice%")
+        self.assertNotIn("#twice", connection.calls[0][0])
+
+    def test_tag_landing_filter_uses_uuid_and_empty_tag_never_lists_everything(self):
+        def handler(sql, _params):
+            if "collection_list.count" in sql:
+                return [{"total": 0}]
+            return []
+
+        by_id = FakeConnection(handler)
+        catalog.list_collections(tag_ids=[TAG_ID], connection=by_id)
+        count_sql, count_params = by_id.calls[0]
+        self.assertIn("fe_filter_id_0.etiqueta_id = :tag_id_0", count_sql)
+        self.assertEqual(count_params["tag_id_0"], TAG_ID)
+
+        empty_name = FakeConnection(handler)
+        catalog.list_collections(tags=["#"], connection=empty_name)
+        self.assertIn(" AND FALSE", empty_name.calls[0][0])
+
+        invalid_id = FakeConnection(handler)
+        catalog.list_collections(tag_ids=["not-a-uuid"], connection=invalid_id)
+        self.assertIn(" AND FALSE", invalid_id.calls[0][0])
 
     def test_detail_has_tags_and_safe_grouped_media_without_raw_path(self):
         detail_row = {

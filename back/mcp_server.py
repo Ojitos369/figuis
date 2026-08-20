@@ -379,7 +379,8 @@ def _interleave_unique(first: Sequence[SearchHit], second: Sequence[SearchHit]) 
 @catalog_mcp.tool(
     title="Buscar el catalogo",
     description=(
-        "Busca una frase en las colecciones publicas y en sus modelos 3D. "
+        "Busca una frase en nombres, descripciones y etiquetas de las colecciones "
+        "publicas, ademas de sus modelos 3D. "
         "Devuelve como maximo 50 ids, titulos y URLs canonicas para usar con fetch."
     ),
     annotations=READ_ONLY_ANNOTATIONS,
@@ -388,7 +389,9 @@ def _interleave_unique(first: Sequence[SearchHit], second: Sequence[SearchHit]) 
 def search(query: RequiredText) -> SearchResponse:
     """Busca colecciones y modelos 3D publicos con el formato estandar de OpenAI."""
 
-    clean_query = _clean_required(query, "query")
+    clean_query = _clean_required(query, "query").lstrip("#").strip()
+    if not clean_query:
+        raise ValueError("query no puede contener solamente #")
     collections = _page_response(
         _call_catalog(
             "search_catalog",

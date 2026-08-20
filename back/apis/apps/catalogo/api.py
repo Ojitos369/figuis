@@ -180,7 +180,11 @@ class GetFiguras(NoSession, BaseApi):
 
         q = self.data.get("q", None)
         if q:
-            q = q.strip()
+            # Las etiquetas se muestran con ``#`` en la UI, pero se guardan
+            # sin ese prefijo. Aceptar ambas formas hace que ``twice`` y
+            # ``#twice`` produzcan el mismo resultado.
+            q = q.strip().lstrip("#").strip()
+        if q:
             try:
                 re.compile(q)
                 is_regex = True
@@ -192,13 +196,41 @@ class GetFiguras(NoSession, BaseApi):
                 # descripcion, id y codigo corto (para poder pegar/buscar un
                 # id o codigo directo, tanto el alfanumerico actual como el
                 # numerico legacy de codigos ya compartidos antes del cambio).
-                self.filtros += f" AND (f.nombre ~* :q OR f.descripcion ~* :q OR f.id::text ~* :q OR {CODIGO_EXPR} ~* :q OR {CODIGO_LEGACY_EXPR} ~* :q)\n"
+                self.filtros += f""" AND (
+                    f.nombre ~* :q
+                    OR COALESCE(f.descripcion, '') ~* :q
+                    OR f.id::text ~* :q
+                    OR {CODIGO_EXPR} ~* :q
+                    OR {CODIGO_LEGACY_EXPR} ~* :q
+                    OR EXISTS (
+                        SELECT 1
+                        FROM figura_etiquetas fe_search
+                        JOIN etiquetas e_search ON e_search.id = fe_search.etiqueta_id
+                        WHERE fe_search.figura_id = f.id
+                          AND e_search.nombre ~* :q
+                    )
+                )
+                """
                 self.query_data["q"] = q
             else:
                 # el texto no es un regex valido (parentesis sueltos, etc):
                 # se cae a busqueda de substring normal, sin tronar la consulta.
                 q_like = q.lower()
-                self.filtros += f" AND (LOWER(f.nombre) LIKE :q OR LOWER(f.descripcion) LIKE :q OR LOWER(f.id::text) LIKE :q OR LOWER({CODIGO_EXPR}) LIKE :q OR {CODIGO_LEGACY_EXPR} LIKE :q)\n"
+                self.filtros += f""" AND (
+                    LOWER(f.nombre) LIKE :q
+                    OR LOWER(COALESCE(f.descripcion, '')) LIKE :q
+                    OR LOWER(f.id::text) LIKE :q
+                    OR LOWER({CODIGO_EXPR}) LIKE :q
+                    OR {CODIGO_LEGACY_EXPR} LIKE :q
+                    OR EXISTS (
+                        SELECT 1
+                        FROM figura_etiquetas fe_search
+                        JOIN etiquetas e_search ON e_search.id = fe_search.etiqueta_id
+                        WHERE fe_search.figura_id = f.id
+                          AND LOWER(e_search.nombre) LIKE :q
+                    )
+                )
+                """
                 self.query_data["q"] = f"%{q_like}%"
 
         desde = self.data.get("desde", None)

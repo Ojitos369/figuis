@@ -13,8 +13,10 @@ from fastapi.responses import JSONResponse
 
 from core.catalog import (
     get_collection,
+    get_public_tag,
     list_collection_media,
     list_collections,
+    list_public_tags,
     search_models,
 )
 from core.http import public_base_url
@@ -43,11 +45,12 @@ def public_openapi(_request: Request):
         if str(getattr(route, "path", "")).startswith("/v1/")
     ]
     schema = get_openapi(
-        title="Figuis Public Catalog API",
+        title="Figuis 3D Public Catalog API",
         version="1.0.0",
         description=(
-            "Consulta de solo lectura de colecciones públicas y su media; "
-            "no contiene datos comerciales."
+            "API de solo lectura de Figuis, también conocido como Figuis 3D, "
+            "Figuis Ojitos369 o Figuis 369. Consulta colecciones, etiquetas "
+            "públicas y su media; no contiene datos comerciales."
         ),
         routes=public_routes,
     )
@@ -62,7 +65,11 @@ def public_openapi(_request: Request):
 def public_collections(
     request: Request,
     query: str | None = Query(default=None, min_length=1, max_length=120),
-    tags: str | None = Query(default=None, max_length=300),
+    tags: str | None = Query(
+        default=None,
+        max_length=300,
+        description="Nombres exactos de etiquetas separados por coma, sin #.",
+    ),
     page: int = Query(default=1, ge=1, le=10_000),
     page_size: int = Query(default=24, ge=1, le=50),
 ):
@@ -75,6 +82,31 @@ def public_collections(
         base_url=public_base_url(request),
     )
     return _response(result)
+
+
+@router.get("/v1/tags", summary="Lista etiquetas de colecciones públicas")
+def public_tags(
+    request: Request,
+    page: int = Query(default=1, ge=1, le=10_000),
+    page_size: int = Query(default=24, ge=1, le=100),
+):
+    result = list_public_tags(
+        page=page,
+        page_size=page_size,
+        base_url=public_base_url(request),
+    )
+    return _response(result)
+
+
+@router.get("/v1/tags/{identifier}", summary="Obtiene una etiqueta pública")
+def public_tag(identifier: str, request: Request):
+    tag = get_public_tag(identifier, base_url=public_base_url(request))
+    if tag is None:
+        raise HTTPException(status_code=404, detail="Etiqueta no encontrada")
+    response = _response({"data": tag})
+    response.headers["Content-Location"] = tag["canonical_url"]
+    response.headers["Link"] = f'<{tag["canonical_url"]}>; rel="canonical"'
+    return response
 
 
 @router.get("/v1/collections/{identifier}/media", summary="Lista la media de una colección pública")

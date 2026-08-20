@@ -3,7 +3,6 @@ from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
 
 from urls import urls_router, add_404_handler
 from mcp_server import catalog_mcp, catalog_mcp_app
@@ -19,6 +18,20 @@ from core.conf.settings import (
 )
 from core.home_preview import generate_home_preview
 from core.http import RequestSizeLimitMiddleware
+
+
+class McpPathCompatibilityMiddleware:
+    """Acepta ``/mcp`` sin activar el redirect absoluto de Starlette."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") == "http" and scope.get("path") == "/mcp":
+            scope = dict(scope)
+            scope["path"] = "/mcp/"
+            scope["raw_path"] = b"/mcp/"
+        await self.app(scope, receive, send)
 
 
 async def refresh_home_preview_loop():
@@ -63,25 +76,9 @@ app.add_middleware(
     allow_headers=allow_headers,
     expose_headers=["Mcp-Session-Id", "Content-Location", "Link"],
 )
+app.add_middleware(McpPathCompatibilityMiddleware)
 
 app.include_router(urls_router, prefix="")
-
-
-@app.api_route(
-    "/mcp",
-    methods=["GET", "POST", "DELETE", "OPTIONS"],
-    include_in_schema=False,
-)
-async def canonical_mcp_redirect():
-    """Preserva método/body y evita que el proxy degrade el redirect a HTTP."""
-
-    return RedirectResponse(
-        url="/mcp/",
-        status_code=307,
-        headers={"Cache-Control": "no-store"},
-    )
-
-
 app.mount("/mcp", catalog_mcp_app, name="figuis-mcp")
 
 add_404_handler(app)
