@@ -21,7 +21,7 @@ export const Tag = ({ nombre, color = '#6366f1', active, onClick, to, size = 'md
     const content = (
         <>
             <span className={style.dot} />
-            {!!displayName && `#${displayName}`}
+            {!!displayName && displayName}
             {removable && !to && (
                 <button
                     type="button"

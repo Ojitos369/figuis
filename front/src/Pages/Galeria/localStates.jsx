@@ -306,13 +306,13 @@ export const localStates = () => {
 
     let catalogHeading = `${SITE_ALIAS}: figuras 3D, K-pop y coleccionables`;
     if (tagNotFound) catalogHeading = 'Etiqueta no encontrada';
-    else if (tagDisplayName) catalogHeading = `Figuras 3D con la etiqueta #${tagDisplayName}`;
+    else if (tagDisplayName) catalogHeading = `Figuras 3D con la etiqueta ${tagDisplayName}`;
     else if (cleanQuery) catalogHeading = `Resultados para “${cleanQuery}”`;
-    else if (tagNames.length) catalogHeading = `Colecciones con ${tagNames.map(name => `#${name}`).join(', ')}`;
+    else if (tagNames.length) catalogHeading = `Colecciones con ${tagNames.join(', ')}`;
 
     let catalogSummary = 'Explora figuras 3D, figuras coleccionables y figuras kpop en las colecciones públicas de Figuis. La mayoría incluye opción Funko, chibi, figura coleccionable e Hipper (estilo Sonny Angel). Este catálogo es informativo y no indica existencias ni disponibilidad de venta.';
     if (tagNotFound) catalogSummary = 'La etiqueta solicitada no existe o ya no está disponible en el catálogo público de Figuis.';
-    else if (tagDisplayName) catalogSummary = `${totalLabel} de Figuis ${total === 1 ? 'está clasificada' : 'están clasificadas'} con #${tagDisplayName}. Explora sus imágenes y referencias publicadas.`;
+    else if (tagDisplayName) catalogSummary = `${totalLabel} de Figuis ${total === 1 ? 'está clasificada' : 'están clasificadas'} con ${tagDisplayName}. Explora sus imágenes y referencias publicadas.`;
     else if (cleanQuery) catalogSummary = `${totalLabel} coinciden con “${cleanQuery}” en el catálogo público de Figuis.`;
     else if (activeFiltersCount) catalogSummary = `${totalLabel} coinciden con los filtros seleccionados en el catálogo público de Figuis.`;
 
