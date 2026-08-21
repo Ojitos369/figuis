@@ -286,11 +286,19 @@ export const localStates = () => {
     }, [tagIdentifier, navigate, location.search, location.state]);
 
     const closeDetail = useCallback(() => {
-        if (location.state?.catalogPath) {
-            navigate(-1);
-            return;
-        }
-        navigate(`/${location.search}`, { replace: true });
+        // No usar navigate(-1): si se abrieron varios detalles seguidos (o el
+        // usuario llegó por link directo) el historial no apunta de forma
+        // confiable al listado, y termina "abriendo" otra colección o una
+        // página vieja. Reconstruimos la URL de destino explícitamente,
+        // tomando la página real ya resuelta (ver getFiguraPagina) desde la
+        // URL actual en vez de la capturada al abrir el detalle.
+        const target = location.state?.catalogPath || '/';
+        const baseParams = new URLSearchParams(location.state?.catalogSearch || '');
+        const currentPage = new URLSearchParams(location.search).get('page');
+        if (currentPage) baseParams.set('page', currentPage);
+        else baseParams.delete('page');
+        const query = baseParams.toString();
+        navigate(`${target}${query ? `?${query}` : ''}`, { replace: true });
     }, [navigate, location.search, location.state]);
 
     const tagNames = selectedTagDetails.map(getTagName).filter(Boolean);
