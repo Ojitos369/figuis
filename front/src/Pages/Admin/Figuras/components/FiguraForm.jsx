@@ -3,12 +3,11 @@ import { useStates } from '../../../../Hooks/useStates';
 import { SheetModal } from '../../../../Components/SheetModal';
 import { ShareActions } from '../../../../Components/ShareActions';
 import { MediaDropzone } from './MediaDropzone';
-import { Model3DDropzone } from './Model3DDropzone';
 import { TagInput } from './TagInput';
 import style from '../styles/form.module.scss';
 
 const emptyForm = { nombre: '', descripcion: '', estatus: 'borrador', etiquetas: [] };
-const emptyArchivos = { resultado: [], relacionado: [], modelo_3d: [] };
+const emptyArchivos = { resultado: [], relacionado: [] };
 
 export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
     const { s, f } = useStates();
@@ -17,7 +16,7 @@ export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
     const [currentId, setCurrentId] = useState(figuraId || null);
     const [form, setForm] = useState(emptyForm);
     const [archivos, setArchivos] = useState(emptyArchivos);
-    const [uploads, setUploads] = useState({ resultado: [], relacionado: [], modelo_3d: [] });
+    const [uploads, setUploads] = useState({ resultado: [], relacionado: [] });
     const [figuraMeta, setFiguraMeta] = useState(null);
 
     useEffect(() => {
@@ -37,7 +36,6 @@ export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
                 setArchivos({
                     resultado: data.resultado || [],
                     relacionado: data.relacionados || [],
-                    modelo_3d: data.modelos_3d || [],
                 });
                 setFiguraMeta(data);
             });
@@ -61,7 +59,6 @@ export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
                 setArchivos({
                     resultado: data.resultado || [],
                     relacionado: data.relacionados || [],
-                    modelo_3d: data.modelos_3d || [],
                 });
                 setFiguraMeta(data);
             });
@@ -186,15 +183,6 @@ export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
                             uploads={uploads.relacionado}
                             onFiles={(files) => handleFiles(files, 'relacionado')}
                             onDelete={(a) => handleDeleteArchivo(a, 'relacionado')}
-                        />
-
-                        <Model3DDropzone
-                            label="Modelo 3D"
-                            hint="Archivo .stl imprimible, con previsualización interactiva."
-                            items={archivos.modelo_3d}
-                            uploads={uploads.modelo_3d}
-                            onFiles={(files) => handleFiles(files, 'modelo_3d')}
-                            onDelete={(a) => handleDeleteArchivo(a, 'modelo_3d')}
                         />
                     </>
                 )}

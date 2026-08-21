@@ -1,9 +1,9 @@
 import { Component } from 'react';
 import style from './styles/index.module.scss';
 
-// Contiene errores de renderizado (p.ej. WebGL/three.js) para que no tumben
-// toda la app - sin esto, un throw en cualquier parte del arbol deja la
-// pantalla en blanco/negro por completo.
+// Contiene errores de renderizado para que no tumben toda la app - sin esto,
+// un throw en cualquier parte del arbol deja la pantalla en blanco/negro por
+// completo.
 export class ErrorBoundary extends Component {
     constructor(props) {
         super(props);

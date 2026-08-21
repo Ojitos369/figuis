@@ -36,11 +36,11 @@ class RequestSizeLimitMiddleware:
     body remains streamed and is never buffered here.
     """
 
-    def __init__(self, app, max_body_size: int):
-        if max_body_size < 1:
-            raise ValueError("max_body_size must be positive")
+    def __init__(self, app, max_body_size: int | None):
+        if max_body_size is not None and max_body_size < 1:
+            raise ValueError("max_body_size must be positive or None (unlimited)")
         self.app = app
-        self.max_body_size = int(max_body_size)
+        self.max_body_size = int(max_body_size) if max_body_size is not None else None
 
     @staticmethod
     async def _reject(send) -> None:
@@ -61,6 +61,10 @@ class RequestSizeLimitMiddleware:
 
     async def __call__(self, scope, receive, send):
         if scope.get("type") != "http":
+            await self.app(scope, receive, send)
+            return
+
+        if self.max_body_size is None:
             await self.app(scope, receive, send)
             return
 

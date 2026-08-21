@@ -22,13 +22,13 @@ COLLECTION = {
     "url": CANONICAL_URL,
     "price": "should-never-leak",
 }
-MODEL = {
+MEDIA_ITEM = {
     "resource_id": "media:223e4567-e89b-42d3-a456-426614174000",
     "resource_type": "media",
     "id": "223e4567-e89b-42d3-a456-426614174000",
-    "name": "robot.stl",
-    "path": "/media/robot.stl",
-    "url": f"{mcp_server.PUBLIC_BASE_URL}/media/robot.stl",
+    "name": "robot.jpg",
+    "path": "/media/robot.jpg",
+    "url": f"{mcp_server.PUBLIC_BASE_URL}/media/robot.jpg",
     "collection": COLLECTION,
 }
 
@@ -52,12 +52,10 @@ class McpToolContractTests(unittest.TestCase):
             self.assertTrue(item["annotations"]["readOnlyHint"])
             self.assertFalse(item["annotations"]["destructiveHint"])
 
-    def test_search_interleaves_collections_and_models_with_citable_urls(self):
+    def test_search_returns_collections_with_citable_urls(self):
         def catalog_call(operation, *args, **kwargs):
             if operation == "search_catalog":
                 return page([COLLECTION])
-            if operation == "search_models":
-                return page([MODEL])
             self.fail(f"unexpected operation: {operation}")
 
         with patch.object(mcp_server, "_call_catalog", side_effect=catalog_call):
@@ -65,9 +63,8 @@ class McpToolContractTests(unittest.TestCase):
 
         self.assertEqual(
             [item["id"] for item in result["results"]],
-            [COLLECTION["resource_id"], MODEL["resource_id"]],
+            [COLLECTION["resource_id"]],
         )
-        self.assertEqual(result["results"][1]["title"], "Robot - robot.stl")
         self.assertTrue(all(item["url"].startswith("http") for item in result["results"]))
 
     def test_search_normalizes_hash_prefixed_tag_queries(self):
@@ -81,14 +78,14 @@ class McpToolContractTests(unittest.TestCase):
             result = mcp_server.search(" #twice ")
 
         self.assertEqual(result, {"results": []})
-        self.assertEqual([call[1][0] for call in calls], ["twice", "twice"])
+        self.assertEqual([call[1][0] for call in calls], ["twice"])
 
     def test_fetch_is_read_only_scoped_and_strips_commerce_fields(self):
         def catalog_call(operation, *args, **kwargs):
             if operation == "get_catalog_resource":
                 return dict(COLLECTION)
             if operation == "list_collection_media":
-                return page([MODEL])
+                return page([MEDIA_ITEM])
             self.fail(f"unexpected operation: {operation}")
 
         with patch.object(mcp_server, "_call_catalog", side_effect=catalog_call):

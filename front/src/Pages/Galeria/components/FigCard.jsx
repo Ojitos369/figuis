@@ -30,9 +30,6 @@ export const FigCard = ({ figura, style, onOpen, getTagHref, enterDelay = 0 }) =
                     {figura.portada
                         ? <MediaThumb url={figura.portada} alt={figura.nombre} />
                         : <span className={style.figThumbEmpty}>🧸</span>}
-                    {!!figura.tiene_3d && (
-                        <span className={`${style.thumbBadge} ${style.thumbBadge3d}`}>🧊 3D</span>
-                    )}
                     {!!figura.num_relacionados && (
                         <span className={`${style.thumbBadge} ${style.thumbBadgeMedia}`}>🖼 {figura.num_relacionados}</span>
                     )}

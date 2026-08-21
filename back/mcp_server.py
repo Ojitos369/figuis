@@ -86,7 +86,7 @@ Page = Annotated[int, Field(ge=1, le=10_000)]
 Limit = Annotated[int, Field(ge=1, le=50)]
 Tag = Annotated[str, Field(min_length=1, max_length=80)]
 Tags = Annotated[list[Tag] | None, Field(max_length=20)]
-MediaType = Literal["resultado", "relacionado", "modelo_3d"]
+MediaType = Literal["resultado", "relacionado"]
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -359,35 +359,18 @@ def _search_hit(record: Any) -> SearchHit:
     }
 
 
-def _interleave_unique(first: Sequence[SearchHit], second: Sequence[SearchHit]) -> list[SearchHit]:
-    results: list[SearchHit] = []
-    seen: set[str] = set()
-    for index in range(max(len(first), len(second))):
-        for group in (first, second):
-            if index >= len(group):
-                continue
-            item = group[index]
-            if item["id"] in seen:
-                continue
-            results.append(item)
-            seen.add(item["id"])
-            if len(results) == _SEARCH_RESULT_LIMIT:
-                return results
-    return results
-
-
 @catalog_mcp.tool(
     title="Buscar el catalogo",
     description=(
         "Busca una frase en nombres, descripciones y etiquetas de las colecciones "
-        "publicas, ademas de sus modelos 3D. "
+        "publicas. "
         "Devuelve como maximo 50 ids, titulos y URLs canonicas para usar con fetch."
     ),
     annotations=READ_ONLY_ANNOTATIONS,
     structured_output=True,
 )
 def search(query: RequiredText) -> SearchResponse:
-    """Busca colecciones y modelos 3D publicos con el formato estandar de OpenAI."""
+    """Busca colecciones publicas con el formato estandar de OpenAI."""
 
     clean_query = _clean_required(query, "query").lstrip("#").strip()
     if not clean_query:
@@ -401,18 +384,8 @@ def search(query: RequiredText) -> SearchResponse:
             base_url=PUBLIC_BASE_URL,
         )
     )
-    models = _page_response(
-        _call_catalog(
-            "search_models",
-            clean_query,
-            page=1,
-            page_size=_SEARCH_RESULT_LIMIT,
-            base_url=PUBLIC_BASE_URL,
-        )
-    )
     collection_hits = [_search_hit(item) for item in collections["items"]]
-    model_hits = [_search_hit(item) for item in models["items"]]
-    return {"results": _interleave_unique(collection_hits, model_hits)}
+    return {"results": collection_hits[:_SEARCH_RESULT_LIMIT]}
 
 
 @catalog_mcp.tool(
@@ -531,8 +504,8 @@ def get_collection(identifier: Identifier) -> dict[str, Any]:
 @catalog_mcp.tool(
     title="Listar multimedia de una coleccion",
     description=(
-        "Lista exclusivamente los archivos publicos de una coleccion: resultados, "
-        "material relacionado o modelos 3D."
+        "Lista exclusivamente los archivos publicos de una coleccion: resultados o "
+        "material relacionado."
     ),
     annotations=READ_ONLY_ANNOTATIONS,
     structured_output=True,
@@ -550,33 +523,6 @@ def list_collection_media(
             "list_collection_media",
             _clean_required(identifier, "identifier"),
             media_type=media_type,
-            page=page,
-            page_size=limit,
-            base_url=PUBLIC_BASE_URL,
-        )
-    )
-
-
-@catalog_mcp.tool(
-    title="Buscar modelos 3D",
-    description=(
-        "Busca solo archivos de modelo 3D publicos por nombre de archivo o por la "
-        "coleccion a la que pertenecen. No informa stock, venta ni licencia."
-    ),
-    annotations=READ_ONLY_ANNOTATIONS,
-    structured_output=True,
-)
-def search_models(
-    query: OptionalText = None,
-    page: Page = 1,
-    limit: Limit = 24,
-) -> PageResponse:
-    """Busca o lista los modelos 3D publicos del catalogo."""
-
-    return _page_response(
-        _call_catalog(
-            "search_models",
-            _clean_optional(query),
             page=page,
             page_size=limit,
             base_url=PUBLIC_BASE_URL,

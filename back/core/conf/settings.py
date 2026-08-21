@@ -15,20 +15,34 @@ def env_bool(name, default=False):
     return str(os.environ.get(name, default)).strip().lower() in {'1', 'true', 'yes', 'on'}
 
 
-def env_bounded_int(name, default, *, minimum=1, maximum=1024 * 1024 * 1024):
-    raw = os.environ.get(name, str(default))
+def env_optional_int(name, default=None, *, minimum=1):
+    """Entero opcional: sin la env var (o "0"/"unlimited"/"off") = sin límite (None)."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    raw = raw.strip()
+    if raw == '' or raw.lower() in {'0', 'none', 'unlimited', 'off'}:
+        return None
     try:
         value = int(raw)
     except (TypeError, ValueError) as exc:
-        raise ValueError(f'{name} debe ser un entero') from exc
-    if not minimum <= value <= maximum:
-        raise ValueError(f'{name} debe estar entre {minimum} y {maximum}')
+        raise ValueError(f'{name} debe ser un entero, "unlimited" o "0"') from exc
+    if value < minimum:
+        raise ValueError(f'{name} debe ser >= {minimum}')
     return value
 
 
-MAX_REQUEST_BODY_SIZE = env_bounded_int('MAX_REQUEST_BODY_SIZE', 70 * 1024 * 1024)
-MAX_UPLOAD_FILE_SIZE = env_bounded_int('MAX_UPLOAD_FILE_SIZE', 64 * 1024 * 1024)
-if MAX_UPLOAD_FILE_SIZE >= MAX_REQUEST_BODY_SIZE:
+# Sin límite por defecto: el panel admin es de un solo usuario autenticado y
+# las subidas ya van en streaming a disco (nunca se bufferean en memoria), así
+# que el único riesgo real es llenar el disco del servidor a mano. Se puede
+# reintroducir un tope pasando bytes por env (o "0"/"unlimited" para quitarlo).
+MAX_REQUEST_BODY_SIZE = env_optional_int('MAX_REQUEST_BODY_SIZE', default=None)
+MAX_UPLOAD_FILE_SIZE = env_optional_int('MAX_UPLOAD_FILE_SIZE', default=None)
+if (
+    MAX_UPLOAD_FILE_SIZE is not None
+    and MAX_REQUEST_BODY_SIZE is not None
+    and MAX_UPLOAD_FILE_SIZE >= MAX_REQUEST_BODY_SIZE
+):
     raise ValueError('MAX_UPLOAD_FILE_SIZE debe ser menor que MAX_REQUEST_BODY_SIZE')
 
 

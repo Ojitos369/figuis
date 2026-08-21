@@ -34,7 +34,7 @@ COLLECTION = {
             "canonical_url": "https://figuis.example/etiqueta/fantasia--323e4567-e89b-42d3-a456-426614174000",
         }
     ],
-    "media_counts": {"resultado": 1, "relacionado": 0, "modelo_3d": 1, "total": 2},
+    "media_counts": {"resultado": 1, "relacionado": 1, "total": 2},
     "media": [
         {
             "id": "media-1",
@@ -45,10 +45,10 @@ COLLECTION = {
         },
         {
             "id": "media-2",
-            "kind": "modelo_3d",
-            "name": "Modelo STL",
-            "url": "https://figuis.example/media/dragon.stl",
-            "mime_type": "model/stl",
+            "kind": "relacionado",
+            "name": "Foto de referencia",
+            "url": "https://figuis.example/media/dragon-ref.webp",
+            "mime_type": "image/webp",
         },
     ],
 }
@@ -58,7 +58,6 @@ TAG = {
     "canonical_id": "twice--323e4567-e89b-42d3-a456-426614174001",
     "canonical_url": "https://figuis.example/etiqueta/twice--323e4567-e89b-42d3-a456-426614174001",
     "collection_count": 39,
-    "model_count": 2,
     "updated_at": "2026-08-20T10:00:00+00:00",
 }
 
@@ -69,7 +68,6 @@ class SeoRepresentationsTests(unittest.TestCase):
         encoded = json.dumps(payload)
         self.assertIn("CollectionPage", encoded)
         self.assertIn("ImageObject", encoded)
-        self.assertIn("3DModel", encoded)
         self.assertNotIn('"Offer"', encoded)
         self.assertNotIn('"Product"', encoded)
         self.assertNotIn('"price"', encoded)
@@ -98,7 +96,7 @@ class SeoRepresentationsTests(unittest.TestCase):
         markdown = collection_markdown(COLLECTION)
         self.assertIn(COLLECTION["canonical_url"], markdown)
         self.assertIn("No publica precio", markdown)
-        self.assertIn("Modelo STL", markdown)
+        self.assertIn("Foto de referencia", markdown)
         self.assertIn("[#Fantasía](https://figuis.example/etiqueta/fantasia--", markdown)
 
     def test_home_representations_expose_brand_aliases_and_real_tag_links(self):

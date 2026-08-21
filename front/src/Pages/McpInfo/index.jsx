@@ -6,13 +6,13 @@ import { DEFAULT_DESCRIPTION, DEFAULT_TITLE } from '../../constants/seo';
 import style from './styles/index.module.scss';
 
 const PAGE_TITLE = 'MCP público · Figuis';
-const PAGE_DESCRIPTION = 'Conecta clientes MCP al catálogo público de Figuis para consultar colecciones, imágenes y modelos 3D mediante herramientas de solo lectura.';
+const PAGE_DESCRIPTION = 'Conecta clientes MCP al catálogo público de Figuis para consultar colecciones e imágenes mediante herramientas de solo lectura.';
 
 const TOOLS = [
     {
         name: 'search',
         params: 'query',
-        description: 'Busca texto entre las colecciones públicas y sus modelos 3D. Devuelve IDs, títulos y URLs canónicas.',
+        description: 'Busca texto entre las colecciones públicas. Devuelve IDs, títulos y URLs canónicas.',
     },
     {
         name: 'fetch',
@@ -32,18 +32,13 @@ const TOOLS = [
     {
         name: 'list_collection_media',
         params: 'identifier, media_type?, page?, limit?',
-        description: 'Lista resultados, material relacionado o modelos 3D pertenecientes a una colección pública.',
-    },
-    {
-        name: 'search_models',
-        params: 'query?, page?, limit?',
-        description: 'Busca o lista exclusivamente archivos públicos de modelos 3D y la colección a la que pertenecen.',
+        description: 'Lista resultados o material relacionado pertenecientes a una colección pública.',
     },
 ];
 
 const EXAMPLE_QUESTIONS = [
     '¿Qué colecciones públicas hay de dragones?',
-    'Busca modelos 3D de robots en el catálogo de Figuis.',
+    'Busca colecciones de robots en el catálogo de Figuis.',
     'Muéstrame los archivos multimedia de esta colección.',
     'Encuentra colecciones con las etiquetas fantasía y anime.',
     '¿Qué contiene la colección identificada por este enlace?',
@@ -172,7 +167,7 @@ export const McpInfo = () => {
                 <span className={style.eyebrow}>MCP público de Figuis</span>
                 <h1>Consulta el catálogo desde clientes de IA</h1>
                 <p>
-                    Este servidor remoto permite buscar y leer colecciones públicas, imágenes y modelos 3D
+                    Este servidor remoto permite buscar y leer colecciones públicas e imágenes
                     mediante el Model Context Protocol. No requiere autenticación y no realiza cambios.
                 </p>
                 <div className={style.badges} aria-label="Características del servidor MCP">

@@ -17,7 +17,6 @@ from core.catalog import (
     list_collection_media,
     list_collections,
     list_public_tags,
-    search_models,
 )
 from core.http import public_base_url
 
@@ -115,7 +114,7 @@ def public_collection_media(
     request: Request,
     media_type: str | None = Query(
         default=None,
-        pattern="^(resultado|relacionado|modelo_3d)$",
+        pattern="^(resultado|relacionado)$",
     ),
     page: int = Query(default=1, ge=1, le=10_000),
     page_size: int = Query(default=50, ge=1, le=50),
@@ -143,17 +142,3 @@ def public_collection(identifier: str, request: Request):
     return response
 
 
-@router.get("/v1/models", summary="Busca modelos 3D publicados")
-def public_models(
-    request: Request,
-    query: str | None = Query(default=None, min_length=1, max_length=120),
-    page: int = Query(default=1, ge=1, le=10_000),
-    page_size: int = Query(default=24, ge=1, le=50),
-):
-    result = search_models(
-        query,
-        page=page,
-        page_size=page_size,
-        base_url=public_base_url(request),
-    )
-    return _response(result)

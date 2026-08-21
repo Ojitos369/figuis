@@ -37,7 +37,7 @@ SITE_DESCRIPTION = (
     "Figuis es el catálogo de Ojitos369, también llamado Figuis 3D o Figuis "
     "369. Explora figuras 3D, figuras coleccionables y figuras kpop: la "
     "mayoría incluye opción Funko, chibi, figura coleccionable e Hipper "
-    "(estilo Sonny Angel), con imágenes y modelos 3D."
+    "(estilo Sonny Angel), con imágenes."
 )
 
 
@@ -69,9 +69,7 @@ def json_ld(payload: Any) -> str:
 def _media_schema(media: dict[str, Any], collection: dict[str, Any]) -> dict[str, Any]:
     mime = plain_text(value(media, "mime_type", "encoding_format"))
     kind = value(media, "kind", "tipo", "type", default="media")
-    if kind == "modelo_3d":
-        type_name = "3DModel"
-    elif mime.startswith("image/"):
+    if mime.startswith("image/"):
         type_name = "ImageObject"
     else:
         type_name = "MediaObject"
@@ -266,11 +264,10 @@ def mcp_info_payload(
         "get_collection": {"identifier": "nombre-etiquetas--UUID"},
         "list_collection_media": {
             "identifier": "nombre-etiquetas--UUID",
-            "media_type": "modelo_3d",
+            "media_type": "relacionado",
             "page": 1,
             "limit": 50,
         },
-        "search_models": {"query": "robot", "page": 1, "limit": 24},
     }
     examples = [
         {"tool": tool["name"], "arguments": example_arguments[tool["name"]]}
@@ -281,7 +278,7 @@ def mcp_info_payload(
         "name": "Servidor MCP público de Figuis",
         "description": (
             "Interfaz pública y de solo lectura para consultar colecciones, "
-            "imágenes, material relacionado y modelos 3D publicados en Figuis."
+            "imágenes y material relacionado publicados en Figuis."
         ),
         "canonical_url": f"{base_url}/mcp-info",
         "endpoint": f"{base_url}/mcp/",
@@ -307,7 +304,7 @@ def mcp_info_payload(
             "includes": [
                 "Colecciones con estatus público",
                 "Etiquetas públicas de esas colecciones",
-                "Imágenes, material relacionado y modelos 3D asociados",
+                "Imágenes y material relacionado asociado",
             ],
             "excludes": [
                 "Usuarios, sesiones, administración, borradores y reacciones",
@@ -874,13 +871,8 @@ def tag_page_title(tag: dict[str, Any]) -> str:
 def tag_summary(tag: dict[str, Any]) -> str:
     name = display_tag_name(tag)
     collections = int(tag.get("collection_count") or 0)
-    models = int(tag.get("model_count") or 0)
     collection_word = "colección pública" if collections == 1 else "colecciones públicas"
-    model_word = "modelo 3D" if models == 1 else "modelos 3D"
-    return (
-        f"{name} reúne {collections} {collection_word} en {PRIMARY_SITE_ALTERNATE_NAME}, "
-        f"con {models} {model_word} publicados para consulta."
-    )
+    return f"{name} reúne {collections} {collection_word} en {PRIMARY_SITE_ALTERNATE_NAME}, publicadas para consulta."
 
 
 def collection_summary(collection: dict[str, Any]) -> str:
@@ -888,15 +880,11 @@ def collection_summary(collection: dict[str, Any]) -> str:
     total = int(
         collection.get("media_count")
         or counts.get("total")
-        or sum(int(counts.get(key) or 0) for key in ("resultado", "relacionado", "modelo_3d"))
+        or sum(int(counts.get(key) or 0) for key in ("resultado", "relacionado"))
     )
-    models = int(counts.get("modelo_3d") or collection.get("model_count") or 0)
     tags = _tag_names(collection)
     answer = f"{value(collection, 'name', 'nombre')} es una colección pública de {PRIMARY_SITE_ALTERNATE_NAME} con {total} archivo"
     answer += "s" if total != 1 else ""
-    answer += f", incluidos {models} modelo"
-    answer += "s" if models != 1 else ""
-    answer += " 3D"
     if tags:
         answer += f". Está clasificada con {', '.join(tags)}"
     return f"{answer}."
@@ -923,13 +911,10 @@ def collection_html(collection: dict[str, Any], base_url: str) -> str:
         )
     tag_html = "".join(tag_items)
     media_html = []
-    models = []
     for item in collection.get("media") or []:
         url = html.escape(str(item.get("url") or ""), quote=True)
         kind = value(item, "kind", "tipo", "type", default="media")
         label = html.escape(plain_text(value(item, "name", "nombre"), kind or "Media"))
-        if kind == "modelo_3d":
-            models.append(label)
         if str(value(item, "mime_type", "encoding_format", default="")).startswith("image/"):
             media_html.append(
                 f'<li><figure><img src="{url}" alt="{label}" loading="lazy" />'
@@ -937,11 +922,6 @@ def collection_html(collection: dict[str, Any], base_url: str) -> str:
             )
         else:
             media_html.append(f'<li><a href="{url}">{label}</a></li>')
-    models_answer = (
-        f"Sí. La colección incluye {len(models)} modelo(s) 3D: {', '.join(models)}."
-        if models
-        else "No hay un modelo 3D publicado en esta colección por ahora."
-    )
     return f"""
 <main data-agent-readable="true">
   <nav aria-label="Migas de pan"><a href="{html.escape(base_url, quote=True)}/">Catálogo</a> / {name}</nav>
@@ -955,10 +935,6 @@ def collection_html(collection: dict[str, Any], base_url: str) -> str:
       <p>Estos son los archivos públicos asociados actualmente.</p>
       <ul>{''.join(media_html) or '<li>No hay media publicada por ahora.</li>'}</ul>
     </section>
-    <section>
-      <h2>¿Hay modelos 3D en esta colección?</h2>
-      <p>{html.escape(models_answer)}</p>
-    </section>
     <p><a href="{canonical}">Enlace permanente de esta colección</a></p>
   </article>
 </main>""".strip()
@@ -968,7 +944,6 @@ def catalog_html(collections: Iterable[dict[str, Any]], base_url: str, total: in
     collections = list(collections)
     collection_label = "colección pública" if total == 1 else "colecciones públicas"
     items = []
-    model_items = []
     tag_items = []
     for tag in _visible_tags(collections):
         if not tag.get("canonical_url"):
@@ -992,21 +967,11 @@ def catalog_html(collections: Iterable[dict[str, Any]], base_url: str, total: in
         items.append(
             f'<li><article>{image_html}<h2><a href="{url}">{name}</a></h2><p>{description}</p></article></li>'
         )
-        model_count = int(
-            (collection.get("media_counts") or {}).get("modelo_3d")
-            or collection.get("model_count")
-            or 0
-        )
-        if model_count:
-            noun = "modelo" if model_count == 1 else "modelos"
-            model_items.append(
-                f'<li><a href="{url}">{name}</a>: {model_count} {noun} 3D</li>'
-            )
     return f"""
 <main data-agent-readable="true">
   <h1>Figuis 3D: figuras 3D, K-pop, anime, series, coleccionables y mas</h1>
   <p>Figuis es el catálogo de Ojitos369, también conocido como Figuis 3D o Figuis 369.</p>
-  <p>Figuis reúne {total} {collection_label} con imágenes, figuras, referencias K-pop y modelos 3D.</p>
+  <p>Figuis reúne {total} {collection_label} con imágenes, figuras y referencias K-pop.</p>
   <p>Actualmente es un catálogo informativo y no ofrece compra en línea.</p>
   <section>
     <h2>¿Qué tipo de figuras hay en Figuis 3D?</h2>
@@ -1019,13 +984,8 @@ def catalog_html(collections: Iterable[dict[str, Any]], base_url: str, total: in
     <ul>{''.join(tag_items) or '<li>Aún no hay etiquetas públicas en esta página.</li>'}</ul>
   </section>
   <section>
-    <h2>¿Qué colecciones y modelos hay?</h2>
+    <h2>¿Qué colecciones hay?</h2>
     <ul>{''.join(items) or '<li>Aún no hay colecciones públicas.</li>'}</ul>
-  </section>
-  <section>
-    <h2>¿Qué modelos 3D están publicados?</h2>
-    <p>Estas colecciones de la página actual incluyen archivos de modelo 3D.</p>
-    <ul>{''.join(model_items) or '<li>No hay modelos 3D publicados en esta página por ahora.</li>'}</ul>
   </section>
   <section>
     <h2>¿Cómo consultar el catálogo desde un agente?</h2>
@@ -1141,7 +1101,6 @@ def tag_html(
             f'<li><article><h2><a href="{url}">{collection_name}</a></h2>'
             f"<p>{description}</p></article></li>"
         )
-    models = int(tag.get("model_count") or 0)
     displayed = len(collections)
     if displayed == total:
         collection_answer = (
@@ -1154,12 +1113,6 @@ def tag_html(
             f"Hay {total} colecciones públicas con esta etiqueta real; "
             f"esta representación muestra las primeras {displayed}."
         )
-    model_answer = (
-        f"Sí. Las colecciones clasificadas como {name} incluyen {models} "
-        f"modelo{'s' if models != 1 else ''} 3D publicado{'s' if models != 1 else ''}."
-        if models
-        else f"No hay modelos 3D publicados bajo la etiqueta {name} por ahora."
-    )
     return f"""
 <main data-agent-readable="true">
   <nav aria-label="Migas de pan"><a href="{html.escape(base_url, quote=True)}/">Catálogo</a> / Etiqueta / #{name}</nav>
@@ -1171,10 +1124,6 @@ def tag_html(
       <h2>¿Qué colecciones tienen la etiqueta {name}?</h2>
       <p>{collection_answer}</p>
       <ul>{''.join(collection_items) or '<li>No hay colecciones públicas para esta etiqueta.</li>'}</ul>
-    </section>
-    <section>
-      <h2>¿Hay modelos 3D con la etiqueta {name}?</h2>
-      <p>{model_answer}</p>
     </section>
     <p><a href="{canonical}">Enlace permanente de la etiqueta {name}</a></p>
   </article>
@@ -1200,7 +1149,6 @@ def tag_markdown(
         f"- Identificador: {tag.get('id')}",
         f"- Colecciones públicas: {total}",
         f"- Colecciones mostradas en esta representación: {len(collection_list)}",
-        f"- Modelos 3D publicados: {int(tag.get('model_count') or 0)}",
         "",
         f"## Colecciones con la etiqueta {name}",
         "",
@@ -1271,7 +1219,7 @@ def catalog_markdown(collections: Iterable[dict[str, Any]], total: int, base_url
         "# Figuis 3D: figuras 3D, K-pop, anime, series, coleccionables y mas",
         "",
         "Figuis es el catálogo de Ojitos369, también conocido como Figuis 3D o Figuis 369.",
-        f"Figuis contiene {total} {collection_label} con figuras, referencias K-pop, imágenes y modelos 3D.",
+        f"Figuis contiene {total} {collection_label} con figuras, referencias K-pop e imágenes.",
         "El catálogo es informativo; no representa inventario ni disponibilidad de venta.",
         "",
         "## ¿Qué tipo de figuras hay en Figuis 3D?",
@@ -1300,28 +1248,6 @@ def catalog_markdown(collections: Iterable[dict[str, Any]], total: int, base_url
         lines.append(
             f"- [{plain_text(value(collection, 'name', 'nombre'))}]({collection.get('canonical_url')}): "
             f"{plain_text(value(collection, 'description', 'descripcion'), collection_summary(collection), 220)}"
-        )
-    lines.extend(["", "## ¿Qué modelos 3D están publicados?", ""])
-    model_collections = [
-        collection
-        for collection in collections
-        if int(
-            (collection.get("media_counts") or {}).get("modelo_3d")
-            or collection.get("model_count")
-            or 0
-        )
-    ]
-    if not model_collections:
-        lines.append("No hay modelos 3D publicados en esta página por ahora.")
-    for collection in model_collections:
-        model_count = int(
-            (collection.get("media_counts") or {}).get("modelo_3d")
-            or collection.get("model_count")
-            or 0
-        )
-        lines.append(
-            f"- [{plain_text(value(collection, 'name', 'nombre'))}]({collection.get('canonical_url')}): "
-            f"{model_count} modelo{'s' if model_count != 1 else ''} 3D."
         )
     lines.extend(
         [

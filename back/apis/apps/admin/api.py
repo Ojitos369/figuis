@@ -1,7 +1,6 @@
 import os
 import json
 import re
-import struct
 from pathlib import Path
 
 from fastapi import HTTPException, status
@@ -14,7 +13,6 @@ from core.home_preview import schedule_home_preview_refresh
 from core.social_preview import generate_social_preview, remove_social_preview
 
 
-MODEL_UPLOAD_EXTENSIONS = frozenset({".stl"})
 RASTER_UPLOAD_EXTENSIONS = frozenset(
     {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tif", ".tiff", ".avif"}
 )
@@ -30,23 +28,24 @@ class UploadTooLargeError(ValueError):
     pass
 
 
-def validate_upload_extension(tipo: str, filename: str) -> str:
-    """Return a normalized allowed extension for the requested media kind."""
+def validate_upload_extension(filename: str) -> str:
+    """Return a normalized allowed extension for a media upload."""
 
     ext = Path(filename or "").suffix.lower()
-    allowed = MODEL_UPLOAD_EXTENSIONS if tipo == "modelo_3d" else MEDIA_UPLOAD_EXTENSIONS
-    if ext not in allowed:
-        if tipo == "modelo_3d":
-            raise ValueError("Los modelos 3D deben ser archivos .stl")
+    if ext not in MEDIA_UPLOAD_EXTENSIONS:
         raise ValueError("La extensión del archivo multimedia no está permitida")
     return ext
 
 
-def copy_upload_limited(source, destination: Path, max_bytes: int = MAX_UPLOAD_FILE_SIZE) -> int:
-    """Stream an upload into a new temporary file without exceeding ``max_bytes``."""
+def copy_upload_limited(source, destination: Path, max_bytes: int | None = MAX_UPLOAD_FILE_SIZE) -> int:
+    """Stream an upload into a new temporary file, optionally bounded by ``max_bytes``.
 
-    if max_bytes < 1:
-        raise ValueError("max_bytes debe ser positivo")
+    ``max_bytes=None`` streams without any size cap (still never buffered in
+    memory: it's copied straight to disk in fixed-size chunks).
+    """
+
+    if max_bytes is not None and max_bytes < 1:
+        raise ValueError("max_bytes debe ser positivo o None (sin límite)")
     destination = Path(destination)
     written = 0
     created = False
@@ -56,12 +55,16 @@ def copy_upload_limited(source, destination: Path, max_bytes: int = MAX_UPLOAD_F
             while True:
                 # Once the exact limit is reached, read one byte to distinguish
                 # a complete upload from one that still has more data.
-                read_size = min(UPLOAD_COPY_CHUNK_SIZE, max_bytes - written + 1)
+                read_size = (
+                    UPLOAD_COPY_CHUNK_SIZE
+                    if max_bytes is None
+                    else min(UPLOAD_COPY_CHUNK_SIZE, max_bytes - written + 1)
+                )
                 chunk = source.read(read_size)
                 if not chunk:
                     break
                 written += len(chunk)
-                if written > max_bytes:
+                if max_bytes is not None and written > max_bytes:
                     raise UploadTooLargeError
                 target.write(chunk)
         return written
@@ -85,43 +88,6 @@ def refresh_social_preview(conexion, figura_id: str) -> None:
         remove_social_preview(figura_id)
         return
     generate_social_preview(figura_id, portada.iloc[0]["archivo_url"], force=True)
-
-
-def stl_esta_completo(contents: bytes) -> bool:
-    """Valida que un .stl no venga truncado (subida cortada a medias).
-    Binario: el header declara cuantos triangulos trae; alcanza con que el
-    archivo tenga AL MENOS ese tanto de bytes (>=, no ==) - muchas
-    herramientas dejan padding/bytes extra al final y el archivo sigue siendo
-    100% valido, los lectores (incluido three.js) simplemente los ignoran.
-    ASCII: debe cerrar con 'endsolid' (muchos exportadores de binario tambien
-    meten 'solid...' como comentario en el header de 80 bytes, por eso se
-    valida primero como binario)."""
-    if len(contents) < 84:
-        return False
-    n = struct.unpack('<I', contents[80:84])[0]
-    if 84 + n * 50 <= len(contents):
-        return True
-    tail = contents[-200:].strip().lower()
-    return contents[:5].lower() == b'solid' and b'endsolid' in tail
-
-
-def stl_archivo_esta_completo(file_path: Path) -> bool:
-    """Validate an STL using only its header and tail, never loading it whole."""
-
-    try:
-        size = file_path.stat().st_size
-        if size < 84:
-            return False
-        with file_path.open("rb") as source:
-            header = source.read(84)
-            n = struct.unpack("<I", header[80:84])[0]
-            if 84 + n * 50 <= size:
-                return True
-            source.seek(max(0, size - 200))
-            tail = source.read(200).strip().lower()
-        return header[:5].lower() == b"solid" and b"endsolid" in tail
-    except (OSError, struct.error):
-        return False
 
 
 class GetFigurasAdmin(BaseApi):
@@ -167,7 +133,6 @@ class GetFigurasAdmin(BaseApi):
                 ORDER BY fa.orden ASC, fa.created_at ASC LIMIT 1
             ) as portada,
             (SELECT COUNT(*) FROM figura_archivos fa2 WHERE fa2.figura_id = f.id) as num_archivos,
-            EXISTS(SELECT 1 FROM figura_archivos fa3 WHERE fa3.figura_id = f.id AND fa3.tipo = 'modelo_3d') as tiene_3d,
             (
                 SELECT json_agg(json_build_object('id', e.id, 'nombre', e.nombre, 'color', e.color))
                 FROM figura_etiquetas fe
@@ -273,7 +238,6 @@ class GetFiguraAdmin(BaseApi):
         archivos = self.d2d(archivos)
         figura["resultado"] = [a for a in archivos if a["tipo"] == "resultado"]
         figura["relacionados"] = [a for a in archivos if a["tipo"] == "relacionado"]
-        figura["modelos_3d"] = [a for a in archivos if a["tipo"] == "modelo_3d"]
 
         etiquetas = self.conexion.consulta_asociativa(
             """
@@ -375,7 +339,7 @@ class SaveFiguraArchivo(BaseApi):
         figura_id = self.data.get("figura_id")
         file = self.data.get("file")
         tipo = self.data.get("tipo", "relacionado")
-        if tipo not in ("resultado", "relacionado", "modelo_3d"):
+        if tipo not in ("resultado", "relacionado"):
             tipo = "relacionado"
         if not figura_id or not file:
             raise self.MYE("Faltan datos")
@@ -386,7 +350,7 @@ class SaveFiguraArchivo(BaseApi):
 
         id_archivo = self.get_id()
         try:
-            ext = validate_upload_extension(tipo, file.filename or "")
+            ext = validate_upload_extension(file.filename or "")
         except ValueError as exc:
             raise self.MYE(str(exc)) from exc
 
@@ -402,11 +366,6 @@ class SaveFiguraArchivo(BaseApi):
             uploaded_size = copy_upload_limited(file.file, temporary_path)
             if uploaded_size == 0:
                 raise self.MYE("El archivo está vacío")
-            if tipo == "modelo_3d" and not stl_archivo_esta_completo(temporary_path):
-                raise self.MYE(
-                    "El archivo .stl parece venir incompleto (subida cortada). "
-                    "Vuelve a intentar la subida."
-                )
 
             os.replace(temporary_path, file_path)
             installed = True
@@ -427,12 +386,14 @@ class SaveFiguraArchivo(BaseApi):
             self.conexion.commit()
             committed = True
         except UploadTooLargeError as exc:
+            limit_detail = (
+                f"{MAX_UPLOAD_FILE_SIZE // (1024 * 1024)} MiB"
+                if MAX_UPLOAD_FILE_SIZE is not None
+                else "configurado"
+            )
             raise HTTPException(
                 status_code=status.HTTP_413_CONTENT_TOO_LARGE,
-                detail=(
-                    "El archivo excede el límite de "
-                    f"{MAX_UPLOAD_FILE_SIZE // (1024 * 1024)} MiB"
-                ),
+                detail=f"El archivo excede el límite de {limit_detail}",
             ) from exc
         finally:
             temporary_path.unlink(missing_ok=True)

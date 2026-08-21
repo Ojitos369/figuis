@@ -30,17 +30,12 @@ MAX_QUERY_LENGTH = 200
 MAX_TAG_FILTERS = 20
 MAX_DETAIL_MEDIA = 500
 
-MEDIA_TYPES = frozenset({"resultado", "relacionado", "modelo_3d"})
+MEDIA_TYPES = frozenset({"resultado", "relacionado"})
 _MEDIA_TYPE_ALIASES = {
     "result": "resultado",
     "resultado": "resultado",
     "related": "relacionado",
     "relacionado": "relacionado",
-    "3d": "modelo_3d",
-    "model": "modelo_3d",
-    "model_3d": "modelo_3d",
-    "modelo": "modelo_3d",
-    "modelo_3d": "modelo_3d",
 }
 _UUID_SUFFIX_RE = re.compile(
     r"(?:^|--)([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
@@ -524,12 +519,9 @@ class CatalogRepository(ClassBase):
     def _tag_item(self, row: Mapping[str, Any]) -> dict[str, Any]:
         item = self._tag_reference(row)
         collection_count = max(_as_int(row.get("collection_count")), 0)
-        model_count = max(_as_int(row.get("model_count")), 0)
         item.update(
             {
                 "collection_count": collection_count,
-                "model_count": model_count,
-                "has_3d_model": model_count > 0,
                 "updated_at": row.get("updated_at"),
             }
         )
@@ -540,8 +532,7 @@ class CatalogRepository(ClassBase):
         cover_path, cover_url = self._media_fields(row.get("cover_path", row.get("portada")))
         result_count = max(_as_int(row.get("resultado_count")), 0)
         related_count = max(_as_int(row.get("relacionado_count")), 0)
-        model_count = max(_as_int(row.get("modelo_3d_count")), 0)
-        total = max(_as_int(row.get("media_count"), result_count + related_count + model_count), 0)
+        total = max(_as_int(row.get("media_count"), result_count + related_count), 0)
         item.update(
             {
                 "orden": _as_int(row.get("orden")),
@@ -552,12 +543,9 @@ class CatalogRepository(ClassBase):
                 "media_counts": {
                     "resultado": result_count,
                     "relacionado": related_count,
-                    "modelo_3d": model_count,
                     "total": total,
                 },
                 "media_count": total,
-                "model_count": model_count,
-                "has_3d_model": model_count > 0,
             }
         )
         return item
@@ -572,11 +560,7 @@ class CatalogRepository(ClassBase):
         if path is None:
             return None
         filename = unquote(PurePosixPath(urlsplit(path).path).name)
-        mime_type = mimetypes.guess_type(filename)[0] or {
-            ".stl": "model/stl",
-            ".obj": "model/obj",
-            ".3mf": "model/3mf",
-        }.get(PurePosixPath(filename).suffix.lower(), "application/octet-stream")
+        mime_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
         item: dict[str, Any] = {
             "resource_id": f"media:{media_id}",
             "resource_type": "media",
@@ -624,8 +608,7 @@ class CatalogRepository(ClassBase):
                 ) AS cover_path,
                 (SELECT COUNT(*) FROM figura_archivos fa WHERE fa.figura_id = f.id AND fa.tipo = 'resultado') AS resultado_count,
                 (SELECT COUNT(*) FROM figura_archivos fa WHERE fa.figura_id = f.id AND fa.tipo = 'relacionado') AS relacionado_count,
-                (SELECT COUNT(*) FROM figura_archivos fa WHERE fa.figura_id = f.id AND fa.tipo = 'modelo_3d') AS modelo_3d_count,
-                (SELECT COUNT(*) FROM figura_archivos fa WHERE fa.figura_id = f.id AND fa.tipo IN ('resultado', 'relacionado', 'modelo_3d')) AS media_count
+                (SELECT COUNT(*) FROM figura_archivos fa WHERE fa.figura_id = f.id AND fa.tipo IN ('resultado', 'relacionado')) AS media_count
             FROM figuras f
         """
 
@@ -741,11 +724,6 @@ class CatalogRepository(ClassBase):
         return """
             SELECT e.id, e.nombre, e.color,
                 COUNT(DISTINCT f.id) AS collection_count,
-                COALESCE(SUM((
-                    SELECT COUNT(*)
-                    FROM figura_archivos fa
-                    WHERE fa.figura_id = f.id AND fa.tipo = 'modelo_3d'
-                )), 0) AS model_count,
                 MAX(f.updated_at) AS updated_at
             FROM etiquetas e
             JOIN figura_etiquetas fe ON fe.etiqueta_id = e.id
@@ -974,12 +952,11 @@ class CatalogRepository(ClassBase):
                 FROM figura_archivos fa
                 JOIN figuras f ON f.id = fa.figura_id
                 WHERE fa.figura_id = :id AND f.estatus = 'publico'
-                  AND fa.tipo IN ('resultado', 'relacionado', 'modelo_3d')
+                  AND fa.tipo IN ('resultado', 'relacionado')
                 ORDER BY CASE fa.tipo
                     WHEN 'resultado' THEN 1
                     WHEN 'relacionado' THEN 2
-                    WHEN 'modelo_3d' THEN 3
-                    ELSE 4
+                    ELSE 3
                 END, fa.orden ASC, fa.created_at ASC, fa.id ASC
                 LIMIT :media_limit
             """,
@@ -991,7 +968,6 @@ class CatalogRepository(ClassBase):
                 "media": media,
                 "resultado": [media_item for media_item in media if media_item["tipo"] == "resultado"],
                 "relacionados": [media_item for media_item in media if media_item["tipo"] == "relacionado"],
-                "modelos_3d": [media_item for media_item in media if media_item["tipo"] == "modelo_3d"],
                 "requested_identifier": resolved["requested_identifier"],
                 "resolution": resolved["resolution"],
                 "is_canonical": resolved["is_canonical"],
@@ -1032,7 +1008,7 @@ class CatalogRepository(ClassBase):
                 FROM figura_archivos fa
                 JOIN figuras f ON f.id = fa.figura_id
                 WHERE fa.figura_id = :id AND f.estatus = 'publico'
-                  AND fa.tipo IN ('resultado', 'relacionado', 'modelo_3d')
+                  AND fa.tipo IN ('resultado', 'relacionado')
                   {kind_sql}
             """,
             params,
@@ -1043,13 +1019,12 @@ class CatalogRepository(ClassBase):
                 FROM figura_archivos fa
                 JOIN figuras f ON f.id = fa.figura_id
                 WHERE fa.figura_id = :id AND f.estatus = 'publico'
-                  AND fa.tipo IN ('resultado', 'relacionado', 'modelo_3d')
+                  AND fa.tipo IN ('resultado', 'relacionado')
                   {kind_sql}
                 ORDER BY CASE fa.tipo
                     WHEN 'resultado' THEN 1
                     WHEN 'relacionado' THEN 2
-                    WHEN 'modelo_3d' THEN 3
-                    ELSE 4
+                    ELSE 3
                 END, fa.orden ASC, fa.created_at ASC, fa.id ASC
                 LIMIT :limit OFFSET :offset
             """,
@@ -1071,80 +1046,6 @@ class CatalogRepository(ClassBase):
             }
         )
 
-    def search_models(
-        self,
-        query: Any = None,
-        *,
-        page: Any = 1,
-        page_size: Any = DEFAULT_PAGE_SIZE,
-    ) -> dict[str, Any]:
-        page, page_size = normalize_pagination(page, page_size)
-        clean_query = _clean_query(query)
-        search_sql = ""
-        params: dict[str, Any] = {}
-        if clean_query:
-            params["search"] = f"%{_escape_like(clean_query)}%"
-            search_sql = """AND (
-                f.nombre ILIKE :search ESCAPE E'\\\\'
-                OR COALESCE(f.descripcion, '') ILIKE :search ESCAPE E'\\\\'
-                OR fa.archivo_url ILIKE :search ESCAPE E'\\\\'
-                OR EXISTS (
-                    SELECT 1 FROM figura_etiquetas fe_search
-                    JOIN etiquetas e_search ON e_search.id = fe_search.etiqueta_id
-                    WHERE fe_search.figura_id = f.id
-                      AND e_search.nombre ILIKE :search ESCAPE E'\\\\'
-                )
-            )"""
-        total = self._total(
-            f"""/* public_catalog.model_search.count */
-                SELECT COUNT(*) AS total
-                FROM figura_archivos fa
-                JOIN figuras f ON f.id = fa.figura_id
-                WHERE f.estatus = 'publico' AND fa.tipo = 'modelo_3d' {search_sql}
-            """,
-            params,
-        )
-        rows = self._query(
-            f"""/* public_catalog.model_search.items */
-                SELECT fa.id AS media_id, fa.archivo_url, fa.tipo, fa.orden, fa.created_at,
-                    f.id AS figura_id, f.nombre, f.descripcion,
-                    ARRAY(
-                        SELECT e.nombre FROM figura_etiquetas fe
-                        JOIN etiquetas e ON e.id = fe.etiqueta_id
-                        WHERE fe.figura_id = f.id
-                        ORDER BY lower(e.nombre), e.id
-                    ) AS tag_names
-                FROM figura_archivos fa
-                JOIN figuras f ON f.id = fa.figura_id
-                WHERE f.estatus = 'publico' AND fa.tipo = 'modelo_3d' {search_sql}
-                ORDER BY f.orden ASC, f.created_at DESC, fa.orden ASC, fa.id ASC
-                LIMIT :limit OFFSET :offset
-            """,
-            {**params, "limit": page_size, "offset": (page - 1) * page_size},
-        )
-        items: list[dict[str, Any]] = []
-        for row in rows:
-            collection = self._collection_reference(
-                {
-                    "id": row.get("figura_id"),
-                    "nombre": row.get("nombre"),
-                    "descripcion": row.get("descripcion"),
-                    "tag_names": row.get("tag_names"),
-                }
-            )
-            media = self._media_item(row, collection=collection)
-            if media is not None:
-                items.append(media)
-        return to_json_safe(
-            {
-                "items": items,
-                "page": page,
-                "page_size": page_size,
-                "total": total,
-                "pages": math.ceil(total / page_size) if total else 0,
-            }
-        )
-
     def get_media(self, media_id: Any) -> dict[str, Any] | None:
         try:
             clean_id = normalize_uuid(media_id)
@@ -1163,7 +1064,7 @@ class CatalogRepository(ClassBase):
                 FROM figura_archivos fa
                 JOIN figuras f ON f.id = fa.figura_id
                 WHERE fa.id = :id AND f.estatus = 'publico'
-                  AND fa.tipo IN ('resultado', 'relacionado', 'modelo_3d')
+                  AND fa.tipo IN ('resultado', 'relacionado')
             """,
             {"id": clean_id},
         )
@@ -1287,18 +1188,6 @@ def list_collection_media(
         return repository.list_collection_media(identifier, media_type=media_type, page=page, page_size=page_size)
 
 
-def search_models(
-    query: Any = None,
-    *,
-    page: Any = 1,
-    page_size: Any = DEFAULT_PAGE_SIZE,
-    base_url: str = "",
-    connection: Any | None = None,
-) -> dict[str, Any]:
-    with _repository(connection, base_url) as repository:
-        return repository.search_models(query, page=page, page_size=page_size)
-
-
 def get_media(media_id: Any, *, base_url: str = "", connection: Any | None = None) -> dict[str, Any] | None:
     with _repository(connection, base_url) as repository:
         return repository.get_media(media_id)
@@ -1333,7 +1222,6 @@ __all__ = [
     "normalize_uuid",
     "resolve_collection",
     "search_catalog",
-    "search_models",
     "short_code",
     "slugify",
     "tag_identifier",

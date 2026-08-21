@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 from io import BytesIO
 from pathlib import Path
-import struct
 import tempfile
 from types import SimpleNamespace
 import unittest
@@ -16,13 +15,11 @@ import starlette.formparsers
 from apis.apps.admin.api import (
     AUDIO_UPLOAD_EXTENSIONS,
     MEDIA_UPLOAD_EXTENSIONS,
-    MODEL_UPLOAD_EXTENSIONS,
     RASTER_UPLOAD_EXTENSIONS,
     VIDEO_UPLOAD_EXTENSIONS,
     SaveFiguraArchivo,
     UploadTooLargeError,
     copy_upload_limited,
-    stl_archivo_esta_completo,
     validate_upload_extension,
 )
 from core.bases.apis import BaseApi, NoSession
@@ -252,22 +249,16 @@ class BaseApiBodyOrderTests(unittest.TestCase):
 
 
 class UploadFileValidationTests(unittest.TestCase):
-    def test_model_only_accepts_stl_and_media_excludes_active_content(self):
-        self.assertEqual(validate_upload_extension("modelo_3d", "MODEL.STL"), ".stl")
-        self.assertEqual(MODEL_UPLOAD_EXTENSIONS, {".stl"})
-
+    def test_media_excludes_active_content(self):
         for ext in RASTER_UPLOAD_EXTENSIONS | VIDEO_UPLOAD_EXTENSIONS | AUDIO_UPLOAD_EXTENSIONS:
-            self.assertEqual(validate_upload_extension("resultado", f"media{ext}"), ext)
-            self.assertEqual(validate_upload_extension("relacionado", f"media{ext}"), ext)
+            self.assertEqual(validate_upload_extension(f"media{ext}"), ext)
 
-        for filename in ("model.obj", "model.3mf", "model.png"):
+        for filename in ("payload.svg", "payload.html", "payload.htm", "no-extension", "model.stl"):
             with self.assertRaises(ValueError):
-                validate_upload_extension("modelo_3d", filename)
-        for filename in ("payload.svg", "payload.html", "payload.htm", "no-extension"):
-            with self.assertRaises(ValueError):
-                validate_upload_extension("resultado", filename)
+                validate_upload_extension(filename)
         self.assertNotIn(".svg", MEDIA_UPLOAD_EXTENSIONS)
         self.assertNotIn(".html", MEDIA_UPLOAD_EXTENSIONS)
+        self.assertNotIn(".stl", MEDIA_UPLOAD_EXTENSIONS)
 
     def test_copy_is_bounded_and_removes_partial_file_on_overflow(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -291,17 +282,6 @@ class UploadFileValidationTests(unittest.TestCase):
                 copy_upload_limited(BytesIO(b"new"), destination, max_bytes=4)
 
             self.assertEqual(destination.read_bytes(), b"keep")
-
-    def test_stl_validation_reads_file_without_whole_file_buffer(self):
-        valid_binary = b"\0" * 80 + struct.pack("<I", 1) + b"\0" * 50
-        with tempfile.TemporaryDirectory() as directory:
-            valid = Path(directory) / "valid.stl"
-            truncated = Path(directory) / "truncated.stl"
-            valid.write_bytes(valid_binary)
-            truncated.write_bytes(valid_binary[:-1])
-
-            self.assertTrue(stl_archivo_esta_completo(valid))
-            self.assertFalse(stl_archivo_esta_completo(truncated))
 
     def test_save_removes_installed_file_if_database_insert_fails(self):
         class ExistingFigure:

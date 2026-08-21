@@ -51,12 +51,9 @@ COLLECTION = {
     "cover_path": "/media/gato.webp",
     "cover_url": "https://figuis.example/media/gato.webp",
     "media_count": 2,
-    "model_count": 1,
-    "has_3d_model": True,
     "media_counts": {
         "resultado": 1,
-        "relacionado": 0,
-        "modelo_3d": 1,
+        "relacionado": 1,
         "total": 2,
     },
     "updated_at": "2026-08-20T10:00:00+00:00",
@@ -72,12 +69,12 @@ COLLECTION = {
         },
         {
             "id": "323e4567-e89b-42d3-a456-426614174000",
-            "kind": "modelo_3d",
-            "tipo": "modelo_3d",
-            "name": "gato.stl",
-            "url": "https://figuis.example/media/gato.stl",
-            "path": "/media/gato.stl",
-            "mime_type": "model/stl",
+            "kind": "relacionado",
+            "tipo": "relacionado",
+            "name": "gato-ref.webp",
+            "url": "https://figuis.example/media/gato-ref.webp",
+            "path": "/media/gato-ref.webp",
+            "mime_type": "image/webp",
         },
     ],
 }
@@ -96,8 +93,6 @@ TAG = {
     "canonical_url": TAG_CANONICAL_URL,
     "url": TAG_CANONICAL_URL,
     "collection_count": 39,
-    "model_count": 3,
-    "has_3d_model": True,
     "updated_at": "2026-08-20T10:00:00+00:00",
 }
 TAGS_PAGE = {"items": [TAG], "page": 1, "page_size": 100, "total": 1, "pages": 1}
@@ -368,7 +363,6 @@ class PublicWebRouteTests(unittest.TestCase):
                 "list_collections",
                 "get_collection",
                 "list_collection_media",
-                "search_models",
             ],
         )
         self.assertTrue(

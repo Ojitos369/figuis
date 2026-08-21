@@ -9,8 +9,6 @@
   },
   "dependencies": {
     "@emoji-mart/data": "^1.2.1",
-    "@react-three/drei": "^10.7.8",
-    "@react-three/fiber": "^9.7.0",
     "@reduxjs/toolkit": "^2.11.2",
     "animate.css": "^4.1.1",
     "axios": "^1.13.2",
@@ -23,7 +21,6 @@
     "sass": "^1.97.2",
     "sweetalert2": "^11.26.17",
     "sweetalert2-react-content": "^5.1.1",
-    "three": "^0.182.0",
     "vite-plugin-parse-html": "^2.1.0"
   },
   "devDependencies": {

@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS figura_etiquetas (
     PRIMARY KEY (figura_id, etiqueta_id)
 );
 
--- tipo: 'resultado' (portada / figura final) | 'relacionado' (fotos de referencia usadas) | 'modelo_3d' (archivo .stl)
+-- tipo: 'resultado' (portada / figura final) | 'relacionado' (fotos de referencia usadas)
 CREATE TABLE IF NOT EXISTS figura_archivos (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     figura_id uuid REFERENCES figuras(id) ON DELETE CASCADE,

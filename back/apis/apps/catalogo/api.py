@@ -129,7 +129,6 @@ class GetFiguras(NoSession, BaseApi):
                 ORDER BY fa.orden ASC, fa.created_at ASC LIMIT 1
             ) as portada,
             (SELECT COUNT(*) FROM figura_archivos fa2 WHERE fa2.figura_id = f.id AND fa2.tipo = 'relacionado') as num_relacionados,
-            EXISTS(SELECT 1 FROM figura_archivos fa4 WHERE fa4.figura_id = f.id AND fa4.tipo = 'modelo_3d') as tiene_3d,
             (
                 SELECT json_agg(json_build_object('id', e.id, 'nombre', e.nombre, 'color', e.color))
                 FROM figura_etiquetas fe
@@ -332,7 +331,6 @@ class GetFigura(NoSession, BaseApi):
         archivos = self.d2d(archivos)
         figura["resultado"] = [a for a in archivos if a["tipo"] == "resultado"]
         figura["relacionados"] = [a for a in archivos if a["tipo"] == "relacionado"]
-        figura["modelos_3d"] = [a for a in archivos if a["tipo"] == "modelo_3d"]
 
         etiquetas = self.conexion.consulta_asociativa(
             """

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback, lazy, Suspense } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useStates } from '../../../Hooks/useStates';
 import { SheetModal } from '../../../Components/SheetModal';
 import { Tag } from '../../../Components/Tag';
@@ -6,7 +6,6 @@ import { Loader } from '../../../Components/Loader';
 import { MediaThumb } from '../../../Components/MediaThumb';
 import { MediaViewer } from '../../../Components/MediaViewer';
 import { ReactionBar } from '../../../Components/ReactionBar';
-import { ErrorBoundary } from '../../../Components/ErrorBoundary';
 import { Copy } from '../../../Components/Icons';
 import { ShareActions } from '../../../Components/ShareActions';
 import { DownloadSelectSheet } from './DownloadSelectSheet';
@@ -15,10 +14,6 @@ import { mediaUrl } from '../../../constants/api';
 import { isFiguraIdentifierFor } from '../figuraUrl';
 
 const SWIPE_THRESHOLD = 40;
-
-// three.js + fiber/drei pesan bastante: solo se descargan si el usuario
-// realmente activa la previsualizacion 3D.
-const STLViewer = lazy(() => import('../../../Components/STLViewer').then(m => ({ default: m.STLViewer })));
 
 const DownloadIcon = ({ all = false }) => (
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -36,7 +31,6 @@ export const DetailModal = ({ ls }) => {
     const { s, f } = useStates();
     const { style, identifier, figuraActual, loadingDetail, closeDetail, getTagHref } = ls;
     const [activeIdx, setActiveIdx] = useState(0);
-    const [show3D, setShow3D] = useState(false);
     const [selectSheetOpen, setSelectSheetOpen] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
 
@@ -47,13 +41,11 @@ export const DetailModal = ({ ls }) => {
         ? figuraActual
         : null;
     const gallery = data ? [...(data.resultado || []), ...(data.relacionados || [])] : [];
-    const modelo3d = data?.modelos_3d?.[0];
-    const canNav = !show3D && gallery.length > 1;
+    const canNav = gallery.length > 1;
     const activeMedia = gallery[activeIdx];
 
     useEffect(() => {
         setActiveIdx(0);
-        setShow3D(false);
         setSelectSheetOpen(false);
         setEditOpen(false);
     }, [identifier]);
@@ -65,8 +57,6 @@ export const DetailModal = ({ ls }) => {
         setActiveIdx(i => (i + 1) % gallery.length);
     }, [gallery.length]);
 
-    // Flechas del teclado, solo mientras se ve la galeria de fotos (no en 3D,
-    // donde arrastrar es rotar el modelo).
     useEffect(() => {
         if (!open || !canNav) return;
         const onKey = (e) => {
@@ -128,15 +118,7 @@ export const DetailModal = ({ ls }) => {
 
             {!!data && (
                 <div className={style.detailBody}>
-                    {show3D && modelo3d ? (
-                        <div className={style.mainViewer}>
-                            <ErrorBoundary fallback={<div className={style.detailLoader}>⚠️ No se pudo cargar el visor 3D.</div>}>
-                                <Suspense fallback={<div className={style.detailLoader}><Loader label="Cargando visor 3D..." /></div>}>
-                                    <STLViewer url={mediaUrl(modelo3d.archivo_url)} />
-                                </Suspense>
-                            </ErrorBoundary>
-                        </div>
-                    ) : !!gallery.length && (
+                    {!!gallery.length && (
                         <>
                             <div
                                 className={style.mainViewer}
@@ -168,12 +150,6 @@ export const DetailModal = ({ ls }) => {
                                 </div>
                             )}
                         </>
-                    )}
-
-                    {!!modelo3d && (
-                        <button type="button" className={style.view3dBtn} onClick={() => setShow3D(v => !v)}>
-                            {show3D ? '🖼 Ver fotos' : '🧊 Previsualizar en 3D'}
-                        </button>
                     )}
 
                     {!!activeMedia && (

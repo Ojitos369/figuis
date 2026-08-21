@@ -196,7 +196,6 @@ class RepositoryTests(unittest.TestCase):
             "nombre": "twice",
             "color": "#fff",
             "collection_count": 39,
-            "model_count": 4,
             "updated_at": datetime(2026, 8, 20),
         }
 
@@ -224,7 +223,6 @@ class RepositoryTests(unittest.TestCase):
         self.assertEqual(item["canonical_id"], canonical)
         self.assertEqual(item["canonical_url"], f"https://figuis.example/etiqueta/{canonical}")
         self.assertEqual(item["collection_count"], 39)
-        self.assertTrue(item["has_3d_model"])
 
         by_uuid = repository.get_public_tag(TAG_ID)
         by_slug = repository.get_public_tag("twice")
@@ -261,7 +259,7 @@ class RepositoryTests(unittest.TestCase):
             sql,
         )
         self.assertIn(
-            "fa.tipo IN ('resultado', 'relacionado', 'modelo_3d')) AS media_count",
+            "fa.tipo IN ('resultado', 'relacionado')) AS media_count",
             sql,
         )
 
@@ -277,8 +275,7 @@ class RepositoryTests(unittest.TestCase):
             "tags": [{"id": SECOND_COLLECTION_ID, "nombre": "#Sci Fi", "color": "#fff"}],
             "cover_path": "covers/robot final.webp",
             "resultado_count": 2,
-            "relacionado_count": 1,
-            "modelo_3d_count": 1,
+            "relacionado_count": 2,
             "media_count": 4,
         }
 
@@ -305,8 +302,6 @@ class RepositoryTests(unittest.TestCase):
         self.assertEqual(item["code"], item["codigo"])
         self.assertEqual(item["resource_id"], f"collection:{item['canonical_id']}")
         self.assertEqual(item["media_counts"]["total"], 4)
-        self.assertEqual(item["model_count"], 1)
-        self.assertTrue(item["has_3d_model"])
         self.assertTrue(item["cover_url"].startswith("https://figuis.example/media/"))
 
         for sql, _params in connection.calls:
@@ -355,13 +350,12 @@ class RepositoryTests(unittest.TestCase):
             "tags": [{"nombre": "3D"}],
             "cover_path": "resultados/robot.png",
             "resultado_count": 1,
-            "relacionado_count": 1,
-            "modelo_3d_count": 1,
+            "relacionado_count": 2,
             "media_count": 3,
         }
         media_rows = [
             {"id": MEDIA_ID, "archivo_url": "resultados/robot.png", "tipo": "resultado", "orden": 0},
-            {"id": SECOND_MEDIA_ID, "archivo_url": "modelos/robot.stl", "tipo": "modelo_3d", "orden": 1},
+            {"id": SECOND_MEDIA_ID, "archivo_url": "relacionados/robot-ref.png", "tipo": "relacionado", "orden": 1},
             {
                 "id": "223e4567-e89b-42d3-a456-426614174002",
                 "archivo_url": "../private.env",
@@ -387,8 +381,7 @@ class RepositoryTests(unittest.TestCase):
         )
         self.assertEqual(len(detail["media"]), 2)
         self.assertEqual(len(detail["resultado"]), 1)
-        self.assertEqual(len(detail["modelos_3d"]), 1)
-        self.assertEqual(detail["modelos_3d"][0]["mime_type"], "model/stl")
+        self.assertEqual(len(detail["relacionados"]), 1)
         self.assertTrue(detail["media_truncated"])
         serialized = json.dumps(detail)
         self.assertNotIn("archivo_url", serialized)
@@ -397,40 +390,25 @@ class RepositoryTests(unittest.TestCase):
             self.assertNotIn("reacciones", sql)
             self.assertNotIn("usuarios", sql)
 
-    def test_media_listing_validates_type_and_search_models_stays_public(self):
+    def test_media_listing_validates_type_and_stays_public(self):
         def handler(sql, _params):
             if "resolve.by_uuid" in sql:
                 return [self.identity(name="Robot", tags=["3D"])]
-            if "model_search.count" in sql or "collection_media.count" in sql:
+            if "collection_media.count" in sql:
                 return [{"total": 1}]
-            if "model_search.items" in sql:
-                return [
-                    {
-                        "media_id": MEDIA_ID,
-                        "archivo_url": "models/robot.stl",
-                        "tipo": "modelo_3d",
-                        "figura_id": COLLECTION_ID,
-                        "nombre": "Robot",
-                        "descripcion": "Articulado",
-                        "tag_names": ["3D"],
-                    }
-                ]
             if "collection_media.items" in sql:
-                return [{"id": MEDIA_ID, "archivo_url": "models/robot.stl", "tipo": "modelo_3d"}]
+                return [{"id": MEDIA_ID, "archivo_url": "relacionados/robot.png", "tipo": "relacionado"}]
             return []
 
         connection = FakeConnection(handler)
         repository = catalog.CatalogRepository(connection, base_url="https://figuis.example")
         with self.assertRaises(ValueError):
-            repository.list_collection_media(COLLECTION_ID, media_type="modelo_3d; DROP TABLE figuras")
+            repository.list_collection_media(COLLECTION_ID, media_type="relacionado; DROP TABLE figuras")
 
-        media_page = repository.list_collection_media(COLLECTION_ID, media_type="3d")
-        self.assertEqual(media_page["items"][0]["kind"], "modelo_3d")
-        model_page = repository.search_models("robot%_")
-        self.assertEqual(model_page["items"][0]["resource_id"], f"media:{MEDIA_ID}")
-        self.assertEqual(model_page["items"][0]["collection"]["name"], "Robot")
+        media_page = repository.list_collection_media(COLLECTION_ID, media_type="related")
+        self.assertEqual(media_page["items"][0]["kind"], "relacionado")
         for sql, _params in connection.calls:
-            if "model_search" in sql or "collection_media" in sql:
+            if "collection_media" in sql:
                 self.assertIn("f.estatus = 'publico'", sql)
 
 
