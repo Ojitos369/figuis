@@ -40,9 +40,6 @@ export const PageHeader = ({ ls }) => {
                     </a>
                     <span className={style.tooltipBubble} role="tooltip">Instagram: @figuis.3d</span>
                 </span>
-                <Link className={style.customLink} to="/figuras-personalizadas">
-                    Figuras personalizadas
-                </Link>
             </div>
             {!!selectedTagDetails.some(tag => getTagName(tag)) && (
                 <nav className={style.activeTags} aria-label="Etiquetas activas">
