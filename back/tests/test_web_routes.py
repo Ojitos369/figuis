@@ -117,6 +117,7 @@ class PublicWebRouteTests(unittest.TestCase):
             patch("urls.list_public_tags", return_value=TAGS_PAGE),
             patch("urls.get_public_tag", return_value=TAG),
             patch("urls._detail_image_url", return_value=COLLECTION["cover_url"]),
+            patch("urls.fetch_figura_privada", return_value=None),
         )
         self.catalog_mocks = []
         for catalog_patch in self.catalog_patches:

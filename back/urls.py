@@ -16,6 +16,7 @@ from fastapi.responses import (
     Response,
 )
 
+from apis.apps.catalogo.api import fetch_figura_privada
 from apis.urls import apis, media
 from core.catalog import (
     get_collection,
@@ -309,6 +310,7 @@ def tag_page(request: Request, identifier: str):
         body_html=tag_html(tag, collections, base_url, total),
         structured_data=tag_json_ld(tag, collections, base_url, total),
         image_url=image_url,
+        hydration={"kind": "etiqueta", "tag": tag},
     )
     return HTMLResponse(content=document, headers=headers)
 
@@ -534,6 +536,12 @@ def figura_preview(request: Request, identifier: str):
             headers=_representation_headers(canonical, max_age=3600),
         )
 
+    try:
+        figura_privada = fetch_figura_privada(collection["id"])
+    except Exception:
+        # La hidratación es una mejora de UX/SEO, no una dependencia dura del
+        # SSR: si falla (DB, lo que sea), la página se sirve igual sin ella.
+        figura_privada = None
     document = inject_spa_document(
         _spa_document(),
         title=collection_title(collection),
@@ -542,6 +550,7 @@ def figura_preview(request: Request, identifier: str):
         body_html=collection_html(collection, base_url),
         structured_data=collection_json_ld(collection, base_url),
         image_url=_detail_image_url(collection, base_url),
+        hydration={"kind": "figura", "figura": figura_privada} if figura_privada else None,
     )
     return HTMLResponse(content=document, headers=headers)
 

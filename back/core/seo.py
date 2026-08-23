@@ -1288,8 +1288,16 @@ def inject_spa_document(
     structured_data: dict[str, Any],
     image_url: str | None = None,
     indexable: bool = True,
+    hydration: dict[str, Any] | None = None,
 ) -> str:
-    """Inyecta SEO y contenido inicial en el bundle SPA sin duplicar metadata."""
+    """Inyecta SEO y contenido inicial en el bundle SPA sin duplicar metadata.
+
+    ``hydration``, si se pasa, se incrusta como JSON (``#__FIGUIS_STATE__``)
+    para que el cliente arranque su estado de Redux con los mismos datos que
+    ya resolvió el SSR, en vez de partir vacío mientras revalida por API —
+    ese hueco es lo que hacía que un renderizador (p.ej. Googlebot) pudiera
+    capturar contenido delgado o vacío donde el HTML servido ya era completo.
+    """
 
     for pattern in _GENERIC_HEAD_PATTERNS:
         document = re.sub(pattern, "", document, flags=re.IGNORECASE | re.DOTALL)
@@ -1309,6 +1317,11 @@ def inject_spa_document(
             f'<meta property="og:image:secure_url" content="{safe_image}" />\n'
             f'<meta name="twitter:image" content="{safe_image}" />\n'
         )
+    hydration_script = (
+        f'<script id="__FIGUIS_STATE__" type="application/json">{json_ld(hydration)}</script>\n'
+        if hydration is not None
+        else ""
+    )
     head = f"""
 <title>{safe_title}</title>
 <meta name="description" content="{safe_description}" />
@@ -1325,7 +1338,7 @@ def inject_spa_document(
 <meta name="twitter:title" content="{safe_title}" />
 <meta name="twitter:description" content="{safe_description}" />
 {image_meta}<script type="application/ld+json">{json_ld(structured_data)}</script>
-""".strip()
+{hydration_script}""".strip()
     document = document.replace("</head>", f"{head}\n</head>", 1)
     root_pattern = r'<div\s+id=["\']root["\']\s*>\s*</div>'
     replacement = f'<div id="root">{body_html}</div>'

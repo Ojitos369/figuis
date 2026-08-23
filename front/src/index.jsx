@@ -2,6 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { BrowserRouter } from 'react-router-dom';
+import { store } from './App/store';
+import { f } from './Hooks/useStates/fs';
 
 // https://animate.style/
 import 'animate.css';
@@ -24,6 +26,25 @@ if (window.location.hash.startsWith('#/')) {
     '',
     `${legacyUrl.pathname}${query ? `?${query}` : ''}`
   );
+}
+
+// Hidrata el estado inicial con los datos que el SSR ya resolvió (figura o
+// etiqueta, ver core/seo.py::inject_spa_document) para que el primer render
+// del cliente no reemplace el contenido bueno del HTML servido por una
+// tarjeta vacía mientras React revalida por API — ese hueco es lo que podía
+// dejarle a un renderizador (p.ej. Googlebot) una foto de página delgada.
+const hydrationNode = document.getElementById('__FIGUIS_STATE__');
+if (hydrationNode) {
+  try {
+    const hydrated = JSON.parse(hydrationNode.textContent || '{}');
+    if (hydrated.kind === 'figura' && hydrated.figura) {
+      store.dispatch(f.u1({ f0: 'catalogo', f1: 'figuraActual', value: hydrated.figura }));
+    } else if (hydrated.kind === 'etiqueta' && hydrated.tag) {
+      store.dispatch(f.u1({ f0: 'catalogo', f1: 'tagActual', value: hydrated.tag }));
+    }
+  } catch {
+    // JSON inesperado: sigue el flujo normal (la SPA lo resuelve por API).
+  }
 }
 
 const root = ReactDOM.createRoot(document.getElementById('root'));

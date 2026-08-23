@@ -5,14 +5,16 @@ import uuid
 import zipfile
 
 from core.bases.apis import BaseApi, NoSession, pln
-from core.bases.utils import CODIGO_EXPR, CODIGO_LEGACY_EXPR
+from core.bases.utils import CODIGO_EXPR, CODIGO_LEGACY_EXPR, ClassBase
 from core.catalog import (
     canonical_identifier,
     collection_slug,
     normalize_pagination,
     resolve_collection,
+    to_json_safe,
 )
 from core.conf.settings import MEDIA_DIR
+from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 
 
@@ -310,29 +312,37 @@ class GetFiguraPagina(GetFiguras):
         self.response = {"data": {"page": page, "position": rn}}
 
 
-class GetFigura(NoSession, BaseApi):
-    def main(self):
-        self.show_me()
-        resolved = resolve_collection(self.data["id"], connection=self.conexion)
+def fetch_figura_privada(identifier, *, visitor_id=None, conexion=None):
+    """Detalle completo de una figura pública (incluye reacciones) en el shape
+    que consume la SPA. Se comparte entre ``GetFigura`` y el SSR de
+    ``/figura/{id}`` (``back/urls.py``) para poder hidratar el estado inicial
+    del cliente con los mismos campos y evitar que la vista quede vacía
+    mientras React revalida en el navegador."""
+    helper = ClassBase()
+    owns_conexion = conexion is None
+    if owns_conexion:
+        helper.create_conexion()
+        conexion = helper.conexion
+    try:
+        resolved = resolve_collection(identifier, connection=conexion)
         if resolved is None:
-            raise self.MYE("Figura no encontrada")
+            return None
         id = resolved["id"]
 
         query = f"SELECT f.*, {CODIGO_EXPR} as codigo FROM figuras f WHERE f.id = :id AND f.estatus = 'publico'"
-        res = self.conexion.consulta_asociativa(query, {"id": id})
+        res = conexion.consulta_asociativa(query, {"id": id})
         if res.empty:
-            raise self.MYE("Figura no encontrada")
-        figura = self.d2d(res)[0]
+            return None
+        figura = helper.d2d(res)[0]
 
-        archivos = self.conexion.consulta_asociativa(
+        archivos = helper.d2d(conexion.consulta_asociativa(
             "SELECT id, archivo_url, tipo, orden FROM figura_archivos WHERE figura_id = :id ORDER BY tipo ASC, orden ASC, created_at ASC",
             {"id": id}
-        )
-        archivos = self.d2d(archivos)
+        ))
         figura["resultado"] = [a for a in archivos if a["tipo"] == "resultado"]
         figura["relacionados"] = [a for a in archivos if a["tipo"] == "relacionado"]
 
-        etiquetas = self.conexion.consulta_asociativa(
+        etiquetas = helper.d2d(conexion.consulta_asociativa(
             """
             SELECT e.id, e.nombre, e.color FROM figura_etiquetas fe
             JOIN etiquetas e ON e.id = fe.etiqueta_id
@@ -340,14 +350,14 @@ class GetFigura(NoSession, BaseApi):
             ORDER BY e.nombre ASC
             """,
             {"id": id}
-        )
-        figura["etiquetas"] = self.d2d(etiquetas)
-        figura["tags"] = figura["etiquetas"]
-        figura["slug"] = collection_slug(figura.get("nombre"), figura["etiquetas"])
-        figura["canonical_id"] = canonical_identifier(figura.get("nombre"), figura["etiquetas"], id)
+        ))
+        figura["etiquetas"] = etiquetas
+        figura["tags"] = etiquetas
+        figura["slug"] = collection_slug(figura.get("nombre"), etiquetas)
+        figura["canonical_id"] = canonical_identifier(figura.get("nombre"), etiquetas, id)
         figura["resolution"] = resolved["resolution"]
 
-        reacciones = self.conexion.consulta_asociativa(
+        reacciones = helper.d2d(conexion.consulta_asociativa(
             """
             SELECT emoji, COUNT(*) as cantidad
             FROM figura_reacciones
@@ -356,19 +366,34 @@ class GetFigura(NoSession, BaseApi):
             ORDER BY cantidad DESC
             """,
             {"id": id}
-        )
-        figura["reacciones"] = self.d2d(reacciones)
+        ))
+        figura["reacciones"] = reacciones
 
-        visitor_id = self.data.get("visitor_id", None)
         mis_reacciones = []
         if visitor_id:
-            mias = self.conexion.consulta_asociativa(
+            mias = helper.d2d(conexion.consulta_asociativa(
                 "SELECT emoji FROM figura_reacciones WHERE figura_id = :id AND visitor_id = :visitor_id",
                 {"id": id, "visitor_id": visitor_id}
-            )
-            mis_reacciones = [r["emoji"] for r in self.d2d(mias)]
+            ))
+            mis_reacciones = [r["emoji"] for r in mias]
         figura["mis_reacciones"] = mis_reacciones
 
+        return to_json_safe(figura)
+    finally:
+        if owns_conexion:
+            helper.close_conexion()
+
+
+class GetFigura(NoSession, BaseApi):
+    def main(self):
+        self.show_me()
+        figura = fetch_figura_privada(
+            self.data["id"],
+            visitor_id=self.data.get("visitor_id"),
+            conexion=self.conexion,
+        )
+        if figura is None:
+            raise HTTPException(status_code=404, detail="Figura no encontrada")
         self.response = {"data": figura}
 
 

@@ -1,11 +1,13 @@
 import { getVisitorId } from '../../../Core/visitor';
+import { isFiguraIdentifierFor } from '../../../Pages/Galeria/figuraUrl';
+import { isTagIdentifierFor } from '../../../Pages/Galeria/tagUrl';
 
 let figuraRequestSequence = 0;
 let figurasRequestSequence = 0;
 let tagRequestSequence = 0;
 
 export const catalogo = props => {
-    const { miAxios, u1, u2, notificacion } = props;
+    const { miAxios, u1, u2, notificacion, s } = props;
 
     const getFiguras = (params = {}) => {
         const requestSequence = ++figurasRequestSequence;
@@ -51,16 +53,29 @@ export const catalogo = props => {
     const getFigura = (id, onDone) => {
         const requestSequence = ++figuraRequestSequence;
         u2("loadings", "catalogo", "figura", true);
-        u1("catalogo", "figuraActual", null);
+        // Si el estado ya trae esta misma figura (hidratada desde el SSR o de
+        // una visita previa), no la vaciamos: se revalida en segundo plano
+        // sin el parpadeo de "cargando" que un crawler podría capturar como
+        // contenido vacío. Si es otra figura distinta, sí se limpia primero
+        // para no mostrar la anterior mientras carga la nueva.
+        const alreadyLoaded = isFiguraIdentifierFor(id, s?.catalogo?.figuraActual);
+        if (!alreadyLoaded) u1("catalogo", "figuraActual", null);
         miAxios.get("catalogo/figura", { params: { id, visitor_id: getVisitorId() } })
             .then(res => {
                 if (requestSequence !== figuraRequestSequence) return;
                 u1("catalogo", "figuraActual", res.data.data);
                 if (onDone) onDone(res.data.data);
             })
-            .catch(() => {
+            .catch(err => {
                 if (requestSequence !== figuraRequestSequence) return;
-                u1("catalogo", "figuraActual", false);
+                // Solo un 404 confirmado significa "no existe": marcarlo así en
+                // cualquier otro error (red, 5xx, timeout) forzaría noindex en
+                // una figura pública real durante el render de un crawler.
+                if (err?.response?.status === 404) {
+                    u1("catalogo", "figuraActual", false);
+                } else if (!alreadyLoaded) {
+                    u1("catalogo", "figuraActual", null);
+                }
                 if (onDone) onDone(null);
             })
             .finally(() => {
@@ -81,7 +96,10 @@ export const catalogo = props => {
     const getTag = (identifier, onDone) => {
         const requestSequence = ++tagRequestSequence;
         u2("loadings", "catalogo", "tag", true);
-        u1("catalogo", "tagActual", null);
+        // Igual que en getFigura: no vaciar una etiqueta ya cargada (hidratada
+        // o de una visita previa) mientras se revalida en segundo plano.
+        const alreadyLoaded = isTagIdentifierFor(identifier, s?.catalogo?.tagActual);
+        if (!alreadyLoaded) u1("catalogo", "tagActual", null);
         miAxios.get(`public/v1/tags/${encodeURIComponent(identifier)}`)
             .then(res => {
                 if (requestSequence !== tagRequestSequence) return;
@@ -89,9 +107,14 @@ export const catalogo = props => {
                 u1("catalogo", "tagActual", data || false);
                 if (onDone) onDone(data || null);
             })
-            .catch(() => {
+            .catch(err => {
                 if (requestSequence !== tagRequestSequence) return;
-                u1("catalogo", "tagActual", false);
+                // Igual que en getFigura: solo un 404 confirmado es "no existe".
+                if (err?.response?.status === 404) {
+                    u1("catalogo", "tagActual", false);
+                } else if (!alreadyLoaded) {
+                    u1("catalogo", "tagActual", null);
+                }
                 if (onDone) onDone(null);
             })
             .finally(() => {
