@@ -29,6 +29,7 @@ export const TagInput = ({ tags, onChange }) => {
 
     const addTag = (etiqueta) => {
         onChange([...tags, etiqueta]);
+        inputRef.current?.focus();
     };
 
     const commitName = (rawName) => {
