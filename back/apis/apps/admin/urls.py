@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request
 from .api import (
     GetFigurasAdmin, GetFiguraAdmin, SaveFigura, DeleteFigura,
-    SaveFiguraArchivo, DeleteFiguraArchivo,
+    SaveFiguraArchivo, DeleteFiguraArchivo, ReorderFiguraArchivos,
     SaveEtiqueta, DeleteEtiqueta,
 )
 
@@ -41,6 +41,12 @@ async def save_figura_archivo(request: Request):
 @router.delete("/delete_figura_archivo")
 async def delete_figura_archivo(request: Request):
     r = await DeleteFiguraArchivo(request=request).run()
+    return r
+
+
+@router.post("/reorder_figura_archivos")
+async def reorder_figura_archivos(request: Request):
+    r = await ReorderFiguraArchivos(request=request).run()
     return r
 
 

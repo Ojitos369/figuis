@@ -103,6 +103,11 @@ export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
         });
     };
 
+    const handleReorder = (nextItems, tipo) => {
+        setArchivos(prev => ({ ...prev, [tipo]: nextItems }));
+        f.admin.reorderFiguraArchivos({ figura_id: currentId, ids: nextItems.map(a => a.id) });
+    };
+
     const isEditing = !!currentId;
 
     return (
@@ -174,6 +179,7 @@ export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
                             uploads={uploads.resultado}
                             onFiles={(files) => handleFiles(files, 'resultado')}
                             onDelete={(a) => handleDeleteArchivo(a, 'resultado')}
+                            onReorder={(next) => handleReorder(next, 'resultado')}
                         />
 
                         <MediaDropzone
@@ -183,6 +189,7 @@ export const FiguraForm = ({ open, figuraId, onClose, onSaved }) => {
                             uploads={uploads.relacionado}
                             onFiles={(files) => handleFiles(files, 'relacionado')}
                             onDelete={(a) => handleDeleteArchivo(a, 'relacionado')}
+                            onReorder={(next) => handleReorder(next, 'relacionado')}
                         />
                     </>
                 )}

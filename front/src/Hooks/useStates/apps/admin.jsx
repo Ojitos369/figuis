@@ -79,6 +79,12 @@ export const admin = props => {
             .catch(err => notifyError(err, "No se pudo eliminar el archivo"));
     };
 
+    const reorderFiguraArchivos = ({ figura_id, ids }, onDone) => {
+        miAxios.post("admin/reorder_figura_archivos", { figura_id, ids })
+            .then(res => { if (onDone) onDone(res.data); })
+            .catch(err => notifyError(err, "No se pudo reordenar los archivos"));
+    };
+
     // Silenciosas en éxito: se usan tanto en el picker de tags (creación automática mientras
     // se escribe) como en el catálogo de etiquetas, y el cambio ya es visible en la lista/chips.
     const saveEtiqueta = (data, onDone) => {
@@ -109,7 +115,7 @@ export const admin = props => {
 
     return {
         getFiguras, getFigura, saveFigura, deleteFigura,
-        saveFiguraArchivo, deleteFiguraArchivo,
+        saveFiguraArchivo, deleteFiguraArchivo, reorderFiguraArchivos,
         saveEtiqueta, deleteEtiqueta,
         getSesiones, closeSesion,
     };

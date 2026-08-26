@@ -438,6 +438,30 @@ class DeleteFiguraArchivo(BaseApi):
         self.response = {"id": id_archivo}
 
 
+class ReorderFiguraArchivos(BaseApi):
+    def main(self):
+        self.show_me()
+        figura_id = self.data.get("figura_id")
+        ids = self.data.get("ids")
+        if isinstance(ids, str):
+            try:
+                ids = json.loads(ids)
+            except Exception:
+                ids = [i for i in ids.split(",") if i]
+        if not figura_id or not ids:
+            raise self.MYE("Faltan datos")
+
+        for index, id_archivo in enumerate(ids):
+            self.conexion.ejecutar(
+                "UPDATE figura_archivos SET orden = :orden WHERE id = :id AND figura_id = :figura_id",
+                {"orden": index, "id": id_archivo, "figura_id": figura_id},
+            )
+        self.conexion.commit()
+        refresh_social_preview(self.conexion, figura_id)
+        schedule_home_preview_refresh()
+        self.response = {"ok": True}
+
+
 class SaveEtiqueta(BaseApi):
     def main(self):
         self.show_me()
