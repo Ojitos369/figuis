@@ -9,28 +9,42 @@ export const MediaDropzone = ({ label, hint, items, uploads = [], onFiles, onDel
     const inputRef = useRef(null);
     const [dragging, setDragging] = useState(false);
     const dragDepth = useRef(0);
-    const draggedIndex = useRef(null);
+    const dragState = useRef(null); // { id, pointerId }
+    const [draggingId, setDraggingId] = useState(null);
+    const [overIdx, setOverIdx] = useState(null);
 
     const openPicker = () => inputRef.current?.click();
 
-    const onItemDragStart = (e, idx) => {
-        draggedIndex.current = idx;
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', String(idx));
+    // Pointer Events (no HTML5 DnD) para que funcione igual con mouse y touch,
+    // y no dispare el menu nativo de imagen ni la zona de "soltar archivos".
+    const hoveredIdxAt = (x, y) => {
+        const el = document.elementFromPoint(x, y)?.closest('[data-media-idx]');
+        return el ? Number(el.dataset.mediaIdx) : null;
     };
-    const onItemDragEnd = () => { draggedIndex.current = null; };
-    const onItemDrop = (e, idx) => {
-        const files = e.dataTransfer?.files;
-        if (files?.length) return; // dejar que la zona externa maneje el archivo nuevo
+    const onItemPointerDown = (e, idx, id) => {
+        if (!onReorder || (e.pointerType === 'mouse' && e.button !== 0) || e.target.closest('button')) return;
+        e.currentTarget.setPointerCapture(e.pointerId);
+        dragState.current = { id, pointerId: e.pointerId };
+        setDraggingId(id);
+        setOverIdx(idx);
+    };
+    const onItemPointerMove = (e) => {
+        if (!dragState.current || dragState.current.pointerId !== e.pointerId) return;
         e.preventDefault();
-        e.stopPropagation();
-        const from = draggedIndex.current;
-        draggedIndex.current = null;
-        if (from === null || from === idx) return;
+        setOverIdx(hoveredIdxAt(e.clientX, e.clientY));
+    };
+    const endDrag = (e) => {
+        if (!dragState.current || dragState.current.pointerId !== e.pointerId) return;
+        const from = items.findIndex(a => a.id === dragState.current.id);
+        const to = hoveredIdxAt(e.clientX, e.clientY);
+        dragState.current = null;
+        setDraggingId(null);
+        setOverIdx(null);
+        if (from === -1 || to === null || from === to) return;
         const next = items.slice();
         const [moved] = next.splice(from, 1);
-        next.splice(idx, 0, moved);
-        onReorder?.(next);
+        next.splice(to, 0, moved);
+        onReorder(next);
     };
 
     const onDragEnter = (e) => {
@@ -71,12 +85,17 @@ export const MediaDropzone = ({ label, hint, items, uploads = [], onFiles, onDel
                     {items.map((a, idx) => (
                         <div
                             key={a.id}
-                            className={`${style.mediaItem} ${style.mediaItemIn}`}
-                            draggable={!!onReorder}
-                            onDragStart={e => onItemDragStart(e, idx)}
-                            onDragEnd={onItemDragEnd}
-                            onDragOver={e => e.preventDefault()}
-                            onDrop={e => onItemDrop(e, idx)}
+                            data-media-idx={idx}
+                            className={[
+                                style.mediaItem,
+                                style.mediaItemIn,
+                                draggingId === a.id ? style.mediaItemDragging : '',
+                                draggingId && draggingId !== a.id && overIdx === idx ? style.mediaItemOver : '',
+                            ].filter(Boolean).join(' ')}
+                            onPointerDown={e => onItemPointerDown(e, idx, a.id)}
+                            onPointerMove={onItemPointerMove}
+                            onPointerUp={endDrag}
+                            onPointerCancel={endDrag}
                         >
                             <MediaThumb url={a.archivo_url} />
                             <button type="button" className={style.mediaRemove} onClick={() => onDelete(a)}>✕</button>

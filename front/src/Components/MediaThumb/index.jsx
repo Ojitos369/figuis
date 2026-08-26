@@ -8,7 +8,7 @@ export const MediaThumb = ({ url, alt = '', className = '' }) => {
     const src = mediaUrl(url);
 
     if (kind === 'video') {
-        return <video className={`${style.fill} ${className}`} src={src} muted preload="metadata" playsInline />;
+        return <video className={`${style.fill} ${className}`} src={src} muted preload="metadata" playsInline draggable={false} />;
     }
     if (kind === 'audio') {
         return (
@@ -17,5 +17,5 @@ export const MediaThumb = ({ url, alt = '', className = '' }) => {
             </div>
         );
     }
-    return <img className={`${style.fill} ${className}`} src={src} alt={alt} loading="lazy" />;
+    return <img className={`${style.fill} ${className}`} src={src} alt={alt} loading="lazy" draggable={false} />;
 };
