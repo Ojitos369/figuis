@@ -17,6 +17,5 @@ logs/*
 !/backups/restore.sh
 
 .codebase-memory/
-prompts/
 docs/
 
