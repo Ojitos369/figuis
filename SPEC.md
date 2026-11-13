@@ -1,1 +1,1 @@
-/home/ojitos369/Documents/Obsidian/OjosApps/Projects/figuis/SPEC.md
+../../../Obsidian/Projects/OjosApps/figuis/SPEC.md
