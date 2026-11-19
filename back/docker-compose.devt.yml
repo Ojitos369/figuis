@@ -1,0 +1,6 @@
+# Dev: arranque manual. Uso: docker compose -f docker-compose.yml -f docker-compose.devt.yml up -d
+services:
+    figuis-dbp:
+        restart: "no"
+    figuis-web:
+        restart: "no"
